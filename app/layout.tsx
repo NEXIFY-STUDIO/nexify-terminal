@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Space_Grotesk, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthGuard } from "@/components/auth-guard"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const spaceGrotesk = Space_Grotesk({
@@ -78,6 +79,7 @@ export default function RootLayout({
         <AuthGuard>
           {children}
         </AuthGuard>
+        <Toaster />
         <Analytics />
         <script
           dangerouslySetInnerHTML={{

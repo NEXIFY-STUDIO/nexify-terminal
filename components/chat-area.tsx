@@ -14,6 +14,8 @@ import {
   Check,
   Terminal,
   FolderOpen,
+  Copy,
+  Clipboard,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useRef } from "react"
@@ -21,6 +23,7 @@ import { ParticleOrb } from "@/components/particle-orb"
 import { TerminalView } from "@/components/terminal-view"
 import { FileExplorer } from "@/components/file-explorer"
 import { SystemMonitor } from "@/components/system-monitor"
+import { useToast } from "@/hooks/use-toast"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -49,6 +52,32 @@ function cleanAnsi(text: string): string {
 }
 
 export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean; toggleSidebar: () => void }) {
+  const { toast } = useToast()
+  
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    textToCopy: string;
+    side: 'top' | 'bottom';
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    textToCopy: "",
+    side: 'top',
+  })
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null)
+  const touchActiveRef = useRef<boolean>(false)
+  const contextMenuRef = useRef(contextMenu)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    contextMenuRef.current = contextMenu
+  }, [contextMenu])
+
   const [isRecording, setIsRecording] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [configDropdownOpen, setConfigDropdownOpen] = useState(false)
@@ -156,6 +185,228 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       console.warn('Haptic trigger skipped:', e);
     }
   };
+
+  // Custom clipboard & long-press gesture handlers
+  const getCopyableText = (target: HTMLElement | null): string => {
+    if (!target) return "";
+    
+    // 1. Search for explicit data-copyable-text attribute up the DOM tree
+    const copyableEl = target.closest("[data-copyable-text]");
+    if (copyableEl) {
+      return copyableEl.getAttribute("data-copyable-text") || "";
+    }
+    
+    // 2. If inside a pipeline-item or message block, find the text content
+    const pipelineItem = target.closest(".pipeline-item");
+    if (pipelineItem) {
+      const terminalContent = pipelineItem.querySelector(".terminal-content");
+      if (terminalContent) {
+        return terminalContent.textContent || "";
+      }
+      
+      const contentEl = pipelineItem.querySelector(".content");
+      if (contentEl) {
+        return contentEl.textContent || "";
+      }
+    }
+
+    // 3. Fallback to selection or innerText
+    const selection = window.getSelection()?.toString();
+    if (selection) return selection;
+
+    const text = target.innerText || target.textContent || "";
+    return text.trim();
+  };
+
+  const handleCopy = async () => {
+    if (!contextMenu.textToCopy) return;
+    
+    try {
+      await navigator.clipboard.writeText(contextMenu.textToCopy);
+      triggerHaptic("light");
+      toast({
+        title: "Skopírované",
+        description: "Text bol úspešne uložený do schránky.",
+        duration: 2000,
+      });
+    } catch (err) {
+      console.error("Copy failed:", err);
+      toast({
+        title: "Chyba pri kopírovaní",
+        description: "Aplikácia nemá prístup k schránke.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setContextMenu(prev => ({ ...prev, visible: false }));
+    }
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        toast({
+          title: "Schránka je prázdna",
+          description: "V schránke sa nenachádza žiadny text na vloženie.",
+          duration: 3000,
+        });
+        setContextMenu(prev => ({ ...prev, visible: false }));
+        return;
+      }
+
+      setInput(prev => {
+        return prev ? `${prev}\n${text}` : text;
+      });
+
+      triggerHaptic("light");
+      
+      if (viewMode !== 'chat') {
+        setViewMode('chat');
+      }
+      
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 50);
+
+      toast({
+        title: "Vložené",
+        description: "Text zo schránky bol úspešne vložený.",
+        duration: 2000,
+      });
+    } catch (err) {
+      console.error("Paste failed:", err);
+      toast({
+        title: "Prístup zamietnutý",
+        description: "iOS nepovolil prečítanie schránky. Skopírovaný text vložte podržaním prsta v textovom poli a zvolením 'Paste'.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setContextMenu(prev => ({ ...prev, visible: false }));
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        cancelTouch();
+        return;
+      }
+      
+      const target = e.target as HTMLElement;
+      
+      // Exclude interactive elements or the custom menu itself
+      if (
+        target.tagName === "BUTTON" ||
+        target.tagName === "A" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "INPUT" ||
+        target.closest("button") !== null ||
+        target.closest("a") !== null ||
+        target.closest("#custom-ios-context-menu") !== null ||
+        target.closest(".dropdown-menu") !== null
+      ) {
+        cancelTouch();
+        return;
+      }
+
+      const touch = e.touches[0];
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+      touchActiveRef.current = true;
+
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+
+      longPressTimerRef.current = setTimeout(() => {
+        if (!touchActiveRef.current) return;
+
+        const text = getCopyableText(target);
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        
+        const menuWidth = 190;
+        const padding = 16;
+        const safeX = Math.max(menuWidth / 2 + padding, Math.min(window.innerWidth - menuWidth / 2 - padding, touchX));
+        const spaceAbove = touchY > 90;
+
+        triggerHaptic("light");
+        
+        // Prevent default native zoom and selection magnifier
+        e.preventDefault();
+
+        setContextMenu({
+          visible: true,
+          x: safeX,
+          y: touchY,
+          textToCopy: text,
+          side: spaceAbove ? 'top' : 'bottom'
+        });
+
+        touchActiveRef.current = false;
+        longPressTimerRef.current = null;
+      }, 2000);
+    };
+
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (!touchStartPosRef.current) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartPosRef.current.x;
+      const dy = touch.clientY - touchStartPosRef.current.y;
+      
+      if (Math.sqrt(dx * dx + dy * dy) > 8) {
+        cancelTouch();
+      }
+    };
+
+    const handleGlobalTouchEnd = () => {
+      cancelTouch();
+    };
+
+    const cancelTouch = () => {
+      touchActiveRef.current = false;
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    };
+
+    const handleGlobalClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && !target.closest("#custom-ios-context-menu")) {
+        setContextMenu(prev => prev.visible ? { ...prev, visible: false } : prev);
+      }
+    };
+
+    document.addEventListener("touchstart", handleGlobalTouchStart, { passive: false });
+    document.addEventListener("touchmove", handleGlobalTouchMove, { passive: true });
+    document.addEventListener("touchend", handleGlobalTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", handleGlobalTouchEnd, { passive: true });
+    document.addEventListener("mousedown", handleGlobalClickOutside);
+    document.addEventListener("touchstart", handleGlobalClickOutside, { passive: true });
+
+    const preventNativeContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (contextMenuRef.current.visible || target.closest(".pipeline-item") || target.closest(".terminal-box")) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("contextmenu", preventNativeContextMenu);
+
+    return () => {
+      document.removeEventListener("touchstart", handleGlobalTouchStart);
+      document.removeEventListener("touchmove", handleGlobalTouchMove);
+      document.removeEventListener("touchend", handleGlobalTouchEnd);
+      document.removeEventListener("touchcancel", handleGlobalTouchEnd);
+      document.removeEventListener("mousedown", handleGlobalClickOutside);
+      document.removeEventListener("touchstart", handleGlobalClickOutside);
+      document.removeEventListener("contextmenu", preventNativeContextMenu);
+      cancelTouch();
+    };
+  }, []);
 
   const handleViewModeChange = (mode: 'chat' | 'terminal' | 'files' | 'system') => {
     triggerHaptic('light');
@@ -692,6 +943,28 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 stroke-dashoffset: 0;
             }
         }
+
+        @keyframes ios-menu-bounce-top {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -100%) translateY(-5px) scale(0.85);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -100%) translateY(-15px) scale(1);
+            }
+        }
+
+        @keyframes ios-menu-bounce-bottom {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, 0) translateY(15px) scale(0.85);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, 0) translateY(25px) scale(1);
+            }
+        }
       ` }} />
       <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-950 to-black" />
 
@@ -958,7 +1231,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 if (group.role === 'user') {
                   // User chat message
                   return (
-                    <div className="pipeline-item" key={group.id}>
+                    <div className="pipeline-item" key={group.id} data-copyable-text={group.content}>
                       <div className="icon-container">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
                           <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
@@ -1001,7 +1274,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                     // Collapsible AI Response
                     const isExpanded = isItemExpanded(group.id, 'chat');
                     return (
-                      <div className="pipeline-item" key={group.id}>
+                      <div className="pipeline-item" key={group.id} data-copyable-text={group.content}>
                         <div className="icon-container">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
                             <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
@@ -1034,7 +1307,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 // Collapsible Terminal Command
                 const isExpanded = isItemExpanded(group.id, 'command-group');
                 return (
-                  <div className="pipeline-item" key={group.id}>
+                  <div className="pipeline-item" key={group.id} data-copyable-text={group.command}>
                     <div className="icon-container">&lt;/&gt;</div>
                     <div className="content">
                       <div
@@ -1049,7 +1322,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                       </div>
                       
                       {isExpanded && (
-                        <div className="terminal-box">
+                        <div className="terminal-box" data-copyable-text={cleanAnsi(group.output)}>
                           <div className="terminal-header">Terminal (local)</div>
                           <div className="terminal-content">
                             {cleanAnsi(group.output)}
@@ -1173,6 +1446,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
               {/* Clean Text Input (Center) */}
               <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value)
@@ -1207,6 +1481,53 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           </div>
         )}
       </div>
+
+      {contextMenu.visible && (
+        <div
+          id="custom-ios-context-menu"
+          className="fixed z-[9999] flex items-center gap-1.5 p-1.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-[12px] bg-zinc-950/85 pointer-events-auto select-none touch-none"
+          style={{
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            transform: contextMenu.side === 'top'
+              ? 'translate(-50%, -100%) translateY(-15px)'
+              : 'translate(-50%, 0) translateY(25px)',
+            boxShadow: '0 0 15px rgba(6, 182, 212, 0.25), 0 8px 32px rgba(0, 0, 0, 0.6)',
+            animation: contextMenu.side === 'top'
+              ? 'ios-menu-bounce-top 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+              : 'ios-menu-bounce-bottom 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* Copy Button */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={!contextMenu.textToCopy}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-95 ${
+              contextMenu.textToCopy
+                ? 'text-cyan-400 hover:bg-white/5 active:bg-white/10 cursor-pointer'
+                : 'text-zinc-600 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Kopírovať
+          </button>
+          
+          {/* Divider */}
+          <div className="w-[1px] h-4 bg-white/10" />
+          
+          {/* Paste Button */}
+          <button
+            type="button"
+            onClick={handlePaste}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-cyan-400 hover:bg-white/5 active:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+          >
+            <Clipboard className="w-3.5 h-3.5" />
+            Vložiť
+          </button>
+        </div>
+      )}
     </main>
   )
 }

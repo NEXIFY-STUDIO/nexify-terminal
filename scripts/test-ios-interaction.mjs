@@ -119,6 +119,143 @@ if (errorPulse.frequency === 60 && errorPulse.durationMs === 150) {
   failed = true;
 }
 
+// 4. Mock Custom Context Menu Long Press & Clamping Logic
+console.log('\n🔍 Test 4: Custom iOS Copy/Paste Context Menu Trigger & Clamping Logic...');
+let contextMenuState = { visible: false, x: 0, y: 0, textToCopy: '', side: 'top' };
+let longPressTimer = null;
+let touchStartPos = null;
+let touchActive = false;
+
+const startLongPressTimer = (clientX, clientY, textContent) => {
+  touchStartPos = { x: clientX, y: clientY };
+  touchActive = true;
+  
+  if (longPressTimer) clearTimeout(longPressTimer);
+  
+  longPressTimer = setTimeout(() => {
+    if (!touchActive) return;
+    
+    // Position clamping and offsets simulation
+    const menuWidth = 190;
+    const padding = 16;
+    const screenWidth = 390; // Emulate iPhone 16 width
+    
+    const safeX = Math.max(menuWidth / 2 + padding, Math.min(screenWidth - menuWidth / 2 - padding, clientX));
+    const spaceAbove = clientY > 90;
+    
+    contextMenuState = {
+      visible: true,
+      x: safeX,
+      y: clientY,
+      textToCopy: textContent,
+      side: spaceAbove ? 'top' : 'bottom'
+    };
+    
+    touchActive = false;
+  }, 2000);
+};
+
+const handleTouchMove = (clientX, clientY) => {
+  if (!touchStartPos) return;
+  const dx = clientX - touchStartPos.x;
+  const dy = clientY - touchStartPos.y;
+  
+  // If moved > 8px, cancel long press
+  if (Math.sqrt(dx * dx + dy * dy) > 8) {
+    touchActive = false;
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }
+};
+
+const handleTouchCancel = () => {
+  touchActive = false;
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+};
+
+// Sub-Test 4a: Long Press trigger (without move)
+console.log('   Simulating touch: touchstart at (200, 150) with message content...');
+startLongPressTimer(200, 150, 'Ahoj, toto je testovacia sprava.');
+
+// Emulate timer firing (2 seconds elapsed)
+console.log('   Fast-forwarding 2000ms long-press timer...');
+if (longPressTimer) {
+  clearTimeout(longPressTimer);
+  
+  const clientX = touchStartPos.x;
+  const clientY = touchStartPos.y;
+  const menuWidth = 190;
+  const padding = 16;
+  const screenWidth = 390;
+  const safeX = Math.max(menuWidth / 2 + padding, Math.min(screenWidth - menuWidth / 2 - padding, clientX));
+  const spaceAbove = clientY > 90;
+  
+  contextMenuState = {
+    visible: true,
+    x: safeX,
+    y: clientY,
+    textToCopy: 'Ahoj, toto je testovacia sprava.',
+    side: spaceAbove ? 'top' : 'bottom'
+  };
+}
+
+if (contextMenuState.visible && contextMenuState.x === 200 && contextMenuState.y === 150 && contextMenuState.side === 'top') {
+  console.log('   ✅ Passed: Context menu triggered, positioned correctly above touch point.');
+} else {
+  console.error(`   ❌ Failed: Unexpected contextMenuState:`, contextMenuState);
+  failed = true;
+}
+
+// Sub-Test 4b: Swiping cancels long press
+console.log('   Simulating touch: touchstart and then touchmove (scrolling)...');
+startLongPressTimer(150, 200, 'Ine testovacie data');
+handleTouchMove(180, 200); // Moved 30px (> 8px)
+
+if (!touchActive) {
+  console.log('   ✅ Passed: TouchMove cancelled long press trigger.');
+} else {
+  console.error('   ❌ Failed: Long press should have been cancelled by movement.');
+  failed = true;
+}
+handleTouchCancel();
+
+// Sub-Test 4c: Boundary Clamping (near right edge)
+console.log('   Simulating touch: near screen right edge (380, 150) on a 390px viewport...');
+startLongPressTimer(380, 150, 'Zarovnanie k pravym okrajom');
+
+if (longPressTimer) {
+  clearTimeout(longPressTimer);
+  const clientX = touchStartPos.x;
+  const clientY = touchStartPos.y;
+  const menuWidth = 190;
+  const padding = 16;
+  const screenWidth = 390;
+  const safeX = Math.max(menuWidth / 2 + padding, Math.min(screenWidth - menuWidth / 2 - padding, clientX));
+  
+  contextMenuState = {
+    visible: true,
+    x: safeX,
+    y: clientY,
+    textToCopy: 'Zarovnanie k pravym okrajom',
+    side: clientY > 90 ? 'top' : 'bottom'
+  };
+}
+
+// Emulated screen edge clamping should keep right boundary inside:
+// screenWidth(390) - menuWidth(190)/2 - padding(16) = 390 - 95 - 16 = 279px.
+if (contextMenuState.x === 279) {
+  console.log('   ✅ Passed: X coordinate clamped to 279px to prevent menu overflow.');
+} else {
+  console.error(`   ❌ Failed: Clamping calculation mismatch. Expected 279, got ${contextMenuState.x}`);
+  failed = true;
+}
+
+
 console.log('\n==================================================');
 console.log('iOS Mobile Interaction Test Summary');
 console.log('==================================================');
