@@ -268,6 +268,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
+          const length = textareaRef.current.value.length;
+          textareaRef.current.setSelectionRange(length, length);
         }
       }, 50);
 
