@@ -1,0 +1,265 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# Nexify Hacking API — VPS deploy script
+# Run on: Ubuntu 22.04 / 24 as root
+# Usage:  bash deploy.sh
+# ─────────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+VPS_IP="${VPS_IP:-194.182.87.6}"
+API_DIR="${API_DIR:-/opt/nexify-hack-api}"
+SERVICE_NAME="${SERVICE_NAME:-nexify-hack-api}"
+NODE_MIN="18"
+FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-http://100.103.0.38:6767}"
+PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-hack-api.isteroidi.it}"
+ENABLE_HTTPS="${ENABLE_HTTPS:-1}"
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
+WATCHDOG_SCHEDULE="${WATCHDOG_SCHEDULE:-*/5 * * * *}"
+NGINX_SITE="/etc/nginx/sites-available/${SERVICE_NAME}"
+NGINX_ENABLED="/etc/nginx/sites-enabled/${SERVICE_NAME}"
+HYDRA_WORDLIST="/usr/share/wordlists/metasploit/unix_passwords.txt"
+HTTPS_READY=0
+
+upsert_env() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+install_hydra_wordlist() {
+  if [[ -s "$HYDRA_WORDLIST" ]]; then
+    echo "      Hydra wordlist: $HYDRA_WORDLIST"
+    return
+  fi
+
+  echo "      Installing Hydra default wordlist..."
+  mkdir -p "$(dirname "$HYDRA_WORDLIST")"
+  if ! curl -fsSL \
+    "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/data/wordlists/unix_passwords.txt" \
+    -o "$HYDRA_WORDLIST"; then
+    cat > "$HYDRA_WORDLIST" <<'EOF'
+root
+admin
+administrator
+toor
+password
+Password123
+changeme
+welcome
+qwerty
+letmein
+EOF
+  fi
+  chmod 644 "$HYDRA_WORDLIST"
+}
+
+reload_nginx() {
+  if pgrep -x nginx >/dev/null 2>&1; then
+    pkill -HUP -o nginx
+  elif systemctl is-active --quiet nginx; then
+    systemctl reload nginx
+  else
+    systemctl restart nginx
+  fi
+}
+
+install_nginx_site() {
+  if [[ ! -f "$SCRIPT_DIR/nginx.conf" ]]; then
+    echo "      nginx.conf not found in $SCRIPT_DIR — skipping nginx setup."
+    return 1
+  fi
+
+  sed "s/hack-api\.isteroidi\.it/${PUBLIC_DOMAIN}/g" "$SCRIPT_DIR/nginx.conf" > "$NGINX_SITE"
+  ln -sfn "$NGINX_SITE" "$NGINX_ENABLED"
+  rm -f /etc/nginx/sites-enabled/default
+  systemctl enable --now nginx >/dev/null 2>&1 || true
+  nginx -t
+  reload_nginx
+}
+
+install_watchdog() {
+  local watchdog_cmd="curl -sf http://localhost:3001/health >/dev/null || systemctl restart ${SERVICE_NAME}"
+  local current_cron
+  current_cron="$(crontab -l 2>/dev/null || true)"
+
+  if printf '%s\n' "$current_cron" | grep -Fq "$watchdog_cmd"; then
+    echo "      Health watchdog already installed."
+    return
+  fi
+
+  {
+    printf '%s\n' "$current_cron"
+    printf '%s %s\n' "$WATCHDOG_SCHEDULE" "$watchdog_cmd"
+  } | sed '/^[[:space:]]*$/d' | crontab -
+  echo "      Health watchdog installed: $WATCHDOG_SCHEDULE"
+}
+
+echo ""
+echo "═══════════════════════════════════════"
+echo "  Nexify Hacking API — Deploy"
+echo "  VPS: $VPS_IP"
+echo "═══════════════════════════════════════"
+echo ""
+
+# ── 1. System packages ────────────────────────────────────────────────────────
+echo "[1/10] Updating packages & installing tools..."
+apt-get update -qq
+apt-get install -y -qq \
+  curl git ufw cron \
+  nmap whois dnsutils \
+  nikto \
+  gobuster \
+  sqlmap \
+  hydra \
+  openssl \
+  ffuf \
+  nginx certbot python3-certbot-nginx || true   # ffuf may need manual install — see below
+
+# Install ffuf if not present
+if ! command -v ffuf &>/dev/null; then
+  echo "      Installing ffuf..."
+  FFUF_VER="2.1.0"
+  curl -sL "https://github.com/ffuf/ffuf/releases/download/v${FFUF_VER}/ffuf_${FFUF_VER}_linux_amd64.tar.gz" \
+    | tar xz -C /usr/local/bin ffuf
+fi
+
+# ── 2. Node.js ────────────────────────────────────────────────────────────────
+echo "[2/10] Checking Node.js..."
+if ! command -v node &>/dev/null || (( $(node -e "process.stdout.write(process.version.slice(1).split('.')[0])") < NODE_MIN )); then
+  echo "      Installing Node.js 20 LTS..."
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  apt-get install -y -qq nodejs
+fi
+echo "      Node: $(node --version)  npm: $(npm --version)"
+
+# ── 3. Hydra defaults ─────────────────────────────────────────────────────────
+echo "[3/10] Verifying Hydra defaults..."
+install_hydra_wordlist
+
+# ── 4. Deploy API files ───────────────────────────────────────────────────────
+echo "[4/10] Deploying API files to $API_DIR..."
+mkdir -p "$API_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cp "$SCRIPT_DIR/server.js"   "$API_DIR/"
+cp "$SCRIPT_DIR/executor.js" "$API_DIR/"
+cp "$SCRIPT_DIR/package.json" "$API_DIR/"
+cp "$SCRIPT_DIR/nginx.conf" "$API_DIR/"
+
+# ── 5. .env file ─────────────────────────────────────────────────────────────
+echo "[5/10] Setting up .env..."
+ENV_FILE="$API_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  TOKEN=$(openssl rand -hex 32)
+  cat > "$ENV_FILE" <<EOF
+# Auto-generated by deploy.sh — $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+HACK_API_TOKEN=$TOKEN
+PORT=3001
+ALLOWED_ORIGIN=$FRONTEND_ORIGIN
+EOF
+else
+  echo "      .env already exists — skipping generation."
+fi
+upsert_env ALLOWED_ORIGIN "$FRONTEND_ORIGIN" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+TOKEN="$(awk -F= '/^HACK_API_TOKEN=/{print $2}' "$ENV_FILE")"
+echo "      Allowed origin: $FRONTEND_ORIGIN"
+echo "      Active token: $TOKEN"
+
+# ── 6. npm install ────────────────────────────────────────────────────────────
+echo "[6/10] Installing npm dependencies..."
+cd "$API_DIR"
+npm install --omit=dev --silent
+
+# ── 7. systemd service ───────────────────────────────────────────────────────
+echo "[7/10] Installing systemd service..."
+cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
+[Unit]
+Description=Nexify Hacking API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$API_DIR
+EnvironmentFile=$API_DIR/.env
+ExecStart=$(command -v node) $API_DIR/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=$SERVICE_NAME
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
+sleep 2
+systemctl is-active --quiet "$SERVICE_NAME" && echo "      Service: RUNNING ✅" || echo "      Service: FAILED ❌ — check: journalctl -u $SERVICE_NAME -n 40"
+
+# ── 8. nginx + certbot ────────────────────────────────────────────────────────
+echo "[8/10] Configuring nginx..."
+install_nginx_site
+
+if [[ "$ENABLE_HTTPS" == "1" ]]; then
+  echo "[9/10] Requesting TLS certificate for $PUBLIC_DOMAIN..."
+  certbot_args=(--nginx -d "$PUBLIC_DOMAIN" --non-interactive --agree-tos --redirect)
+  if [[ -n "$LETSENCRYPT_EMAIL" ]]; then
+    certbot_args+=(--email "$LETSENCRYPT_EMAIL")
+  else
+    certbot_args+=(--register-unsafely-without-email)
+  fi
+
+  if certbot "${certbot_args[@]}"; then
+    nginx -t
+    reload_nginx
+    HTTPS_READY=1
+  else
+    echo "      Certbot failed — continuing in HTTP mode."
+    ENABLE_HTTPS=0
+  fi
+else
+  echo "[9/10] HTTPS disabled — keeping HTTP only."
+fi
+
+# ── 10. UFW firewall + watchdog ──────────────────────────────────────────────
+echo "[10/10] Configuring firewall and watchdog..."
+ufw allow 22/tcp   comment "SSH"    2>/dev/null || true
+ufw allow 80/tcp   comment "HTTP"   2>/dev/null || true
+ufw allow 443/tcp  comment "HTTPS"  2>/dev/null || true
+ufw allow 3001/tcp comment "Nexify Hack API" 2>/dev/null || true
+ufw --force enable 2>/dev/null || true
+systemctl enable --now cron >/dev/null 2>&1 || true
+install_watchdog
+
+# ── Done ─────────────────────────────────────────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════"
+echo "  Deploy complete!"
+echo ""
+if [[ "$ENABLE_HTTPS" == "1" && "$HTTPS_READY" == "1" ]]; then
+  echo "  Health check:"
+  echo "    curl https://$PUBLIC_DOMAIN/health"
+  echo ""
+  echo "  Frontend .env.local:"
+  echo "    VITE_HACK_API_URL=https://$PUBLIC_DOMAIN"
+else
+  echo "  Health check:"
+  echo "    curl http://$VPS_IP:3001/health"
+  echo ""
+  echo "  Frontend .env.local:"
+  echo "    VITE_HACK_API_URL=http://$VPS_IP:3001"
+fi
+echo ""
+echo "  Frontend token:"
+echo "    VITE_HACK_API_TOKEN=$TOKEN"
+echo "═══════════════════════════════════════"
+echo ""

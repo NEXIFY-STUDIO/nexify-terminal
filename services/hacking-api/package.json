@@ -1,0 +1,19 @@
+{
+  "name": "nexify-hack-api",
+  "version": "1.0.0",
+  "description": "Nexify Terminal — VPS hacking API backend",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "postinstall": "node -e \"const fs=require('fs');const p=require('path');const dirs=['darwin-arm64','darwin-x64','linux-x64','linux-arm64'];for(const d of dirs){const f=p.join('node_modules','node-pty','prebuilds',d,'spawn-helper');try{fs.chmodSync(f,0o755);console.log('chmod +x',f);}catch(e){if(e.code!=='ENOENT')console.warn(e.message);}}\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "node-pty": "^1.1.0"
+  }
+}
