@@ -243,6 +243,17 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   };
 
   const handlePaste = async () => {
+    // 1. Check if Clipboard API is available in this context (requires HTTPS or localhost)
+    if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.readText) {
+      toast({
+        title: "Vyžaduje sa zabezpečené pripojenie",
+        description: "Automatické vloženie vyžaduje HTTPS pripojenie. Použite podržanie prsta v textovom poli a kliknite na 'Vložiť'.",
+        duration: 5000,
+      });
+      setContextMenu(prev => ({ ...prev, visible: false }));
+      return;
+    }
+
     try {
       const text = await navigator.clipboard.readText();
       if (!text) {
@@ -280,10 +291,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       });
     } catch (err) {
       console.error("Paste failed:", err);
+      // Apple iOS security prompt cancelled/denied fallback
       toast({
-        title: "Prístup zamietnutý",
-        description: "iOS nepovolil prečítanie schránky. Skopírovaný text vložte podržaním prsta v textovom poli a zvolením 'Paste'.",
-        variant: "destructive",
+        title: "Vloženie zamietnuté",
+        description: "iOS nepovolil prístup k schránke. Môžete ju vložiť podržaním prsta v textovom poli.",
         duration: 5000,
       });
     } finally {
