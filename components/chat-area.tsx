@@ -68,11 +68,20 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     side: 'top',
   })
 
+  const [pasteDialog, setPasteDialog] = useState<{
+    visible: boolean;
+    tempText: string;
+  }>({
+    visible: false,
+    tempText: "",
+  })
+
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null)
   const touchActiveRef = useRef<boolean>(false)
   const contextMenuRef = useRef(contextMenu)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const wasLongPressedRef = useRef<boolean>(false)
 
   useEffect(() => {
     contextMenuRef.current = contextMenu
@@ -242,30 +251,42 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
-  const handlePaste = async () => {
-    // 1. Check if Clipboard API is available in this context (requires HTTPS or localhost)
-    if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.readText) {
-      toast({
-        title: "Vyžaduje sa zabezpečené pripojenie",
-        description: "Automatické vloženie vyžaduje HTTPS pripojenie. Použite podržanie prsta v textovom poli a kliknite na 'Vložiť'.",
-        duration: 5000,
-      });
-      setContextMenu(prev => ({ ...prev, visible: false }));
-      return;
-    }
+  const executePasteText = async (text: string) => {
+    if (!text) return;
 
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text) {
+    if (viewMode === 'terminal') {
+      if (!shellSessionId) {
         toast({
-          title: "Schránka je prázdna",
-          description: "V schránke sa nenachádza žiadny text na vloženie.",
-          duration: 3000,
+          title: "Chyba",
+          description: "Relácia terminálu nie je pripravená.",
+          variant: "destructive",
         });
-        setContextMenu(prev => ({ ...prev, visible: false }));
         return;
       }
 
+      try {
+        const res = await fetch(`/api/shell?path=sessions/${shellSessionId}/input`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: text }),
+        });
+        if (!res.ok) throw new Error("Terminal input write failed");
+        
+        triggerHaptic("light");
+        toast({
+          title: "Vložené do terminálu",
+          description: "Text bol úspešne odoslaný do shell relácie.",
+          duration: 2000,
+        });
+      } catch (err) {
+        console.error("Terminal paste failed:", err);
+        toast({
+          title: "Chyba vkladania",
+          description: "Nepodarilo sa odoslať text do príkazového riadku.",
+          variant: "destructive",
+        });
+      }
+    } else {
       setInput(prev => {
         return prev ? `${prev}\n${text}` : text;
       });
@@ -289,14 +310,35 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         description: "Text zo schránky bol úspešne vložený.",
         duration: 2000,
       });
+    }
+  };
+
+  const handlePaste = async () => {
+    // 1. Check if Clipboard API is available in this context (requires HTTPS or localhost)
+    if (typeof navigator === "undefined" || !navigator.clipboard || !navigator.clipboard.readText) {
+      setContextMenu(prev => ({ ...prev, visible: false }));
+      setPasteDialog({ visible: true, tempText: "" });
+      return;
+    }
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        toast({
+          title: "Schránka je prázdna",
+          description: "V schránke sa nenachádza žiadny text na vloženie.",
+          duration: 3000,
+        });
+        setContextMenu(prev => ({ ...prev, visible: false }));
+        return;
+      }
+
+      await executePasteText(text);
     } catch (err) {
       console.error("Paste failed:", err);
-      // Apple iOS security prompt cancelled/denied fallback
-      toast({
-        title: "Vloženie zamietnuté",
-        description: "iOS nepovolil prístup k schránke. Môžete ju vložiť podržaním prsta v textovom poli.",
-        duration: 5000,
-      });
+      // Apple iOS security prompt cancelled/denied fallback: Open standard input dialog
+      setContextMenu(prev => ({ ...prev, visible: false }));
+      setPasteDialog({ visible: true, tempText: "" });
     } finally {
       setContextMenu(prev => ({ ...prev, visible: false }));
     }
@@ -348,8 +390,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
         triggerHaptic("light");
         
-        // Prevent default native zoom and selection magnifier
-        e.preventDefault();
+        wasLongPressedRef.current = true;
 
         setContextMenu({
           visible: true,
@@ -375,7 +416,13 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       }
     };
 
-    const handleGlobalTouchEnd = () => {
+    const handleGlobalTouchEnd = (e: TouchEvent) => {
+      if (wasLongPressedRef.current) {
+        e.preventDefault();
+        setTimeout(() => {
+          wasLongPressedRef.current = false;
+        }, 100);
+      }
       cancelTouch();
     };
 
@@ -396,8 +443,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     document.addEventListener("touchstart", handleGlobalTouchStart, { passive: false });
     document.addEventListener("touchmove", handleGlobalTouchMove, { passive: true });
-    document.addEventListener("touchend", handleGlobalTouchEnd, { passive: true });
-    document.addEventListener("touchcancel", handleGlobalTouchEnd, { passive: true });
+    document.addEventListener("touchend", handleGlobalTouchEnd, { passive: false });
+    document.addEventListener("touchcancel", handleGlobalTouchEnd, { passive: false });
     document.addEventListener("mousedown", handleGlobalClickOutside);
     document.addEventListener("touchstart", handleGlobalClickOutside, { passive: true });
 
@@ -1539,6 +1586,59 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             <Clipboard className="w-3.5 h-3.5" />
             Vložiť
           </button>
+        </div>
+      )}
+
+      {pasteDialog.visible && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onContextMenu={(e) => e.preventDefault()}>
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 p-5 bg-zinc-950/95 shadow-2xl flex flex-col gap-4"
+            style={{
+              boxShadow: '0 0 25px rgba(6, 182, 212, 0.15), 0 8px 32px rgba(0, 0, 0, 0.8)',
+              animation: 'dropdown-in 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.15) forwards',
+            }}
+          >
+            <div className="flex flex-col gap-1.5 font-sans">
+              <h3 className="text-sm font-semibold text-foreground font-[var(--font-heading)]">
+                Vložiť text (PWA Fallback)
+              </h3>
+              <p className="text-xs text-muted-foreground leading-normal">
+                iOS vyžaduje manuálne vloženie na nezabezpečenom pripojení (HTTP). Podržte prst v poli nižšie a zvoľte **Vložiť**.
+              </p>
+            </div>
+
+            <textarea
+              value={pasteDialog.tempText}
+              onChange={(e) => setPasteDialog(prev => ({ ...prev, tempText: e.target.value }))}
+              placeholder="Sem vložte skopírovaný text..."
+              className="w-full min-h-[90px] p-3 rounded-lg border border-border bg-zinc-900/50 text-foreground text-sm outline-none resize-none focus:border-cyan-500/50 transition-colors"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-end gap-2 mt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground h-8 px-3 rounded-md"
+                onClick={() => setPasteDialog({ visible: false, tempText: "" })}
+              >
+                Zrušiť
+              </Button>
+              <Button
+                size="sm"
+                className="btn-glow h-8 px-4 rounded-md bg-gradient-to-br from-primary via-gray-900 to-black text-white text-xs font-semibold shadow-md"
+                onClick={async () => {
+                  const textToPaste = pasteDialog.tempText;
+                  setPasteDialog({ visible: false, tempText: "" });
+                  if (textToPaste) {
+                    await executePasteText(textToPaste);
+                  }
+                }}
+              >
+                Vložiť
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </main>

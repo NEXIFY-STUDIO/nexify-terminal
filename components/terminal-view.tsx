@@ -13,8 +13,7 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
   useEffect(() => {
     let isDestroyed = false
     let eventSource: EventSource | null = null
-    let termInstance: any = null
-    let resizeHandler: (() => void) | null = null
+    let handleResize: (() => void) | null = null
 
     async function initTerminal() {
       // Dynamically import xterm to prevent SSR issues in Next.js
@@ -47,7 +46,6 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
         },
       })
 
-      termInstance = term
       terminalRef.current = term
 
       const fitAddon = new FitAddon()
@@ -58,7 +56,7 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       fitAddon.fit()
 
       // Handle window resize event
-      resizeHandler = () => {
+      handleResize = () => {
         if (!isDestroyed && term && fitAddon) {
           try {
             fitAddon.fit()
@@ -74,11 +72,11 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
         }
       }
 
-      window.addEventListener("resize", resizeHandler)
+      window.addEventListener("resize", handleResize)
       
       // Perform initial resize delay to let DOM adjust
       setTimeout(() => {
-        if (resizeHandler) resizeHandler()
+        if (handleResize) handleResize()
       }, 100)
 
       // Listen for keystrokes in xterm and send them directly to PTY stdin
@@ -117,11 +115,11 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
     return () => {
       isDestroyed = true
       if (eventSource) eventSource.close()
-      if (termInstance) {
-        termInstance.dispose()
+      if (terminalRef.current) {
+        terminalRef.current.dispose()
       }
-      if (resizeHandler) {
-        window.removeEventListener("resize", resizeHandler)
+      if (handleResize) {
+        window.removeEventListener("resize", handleResize)
       }
     }
   }, [sessionId])

@@ -1,3 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 console.log('📱 Running iOS Interaction, Gestures, & Energy Throttling Logical Tests...');
 
 let failed = false;
@@ -252,6 +258,129 @@ if (contextMenuState.x === 279) {
   console.log('   ✅ Passed: X coordinate clamped to 279px to prevent menu overflow.');
 } else {
   console.error(`   ❌ Failed: Clamping calculation mismatch. Expected 279, got ${contextMenuState.x}`);
+  failed = true;
+}
+
+// Sub-Test 4d: Paste routing based on viewMode (Terminal vs Chat)
+console.log('   Simulating paste routing logic based on active viewMode...');
+let emulatedTerminalWriteInput = null;
+let emulatedChatInputState = '';
+let emulatedViewMode = 'terminal';
+const emulatedShellSessionId = 'test-session-12345';
+
+const executePasteTextMock = (text) => {
+  if (emulatedViewMode === 'terminal') {
+    // Send to terminal input mock
+    emulatedTerminalWriteInput = {
+      url: `/api/shell?path=sessions/${emulatedShellSessionId}/input`,
+      body: { input: text }
+    };
+  } else {
+    // Send to chat input mock
+    emulatedChatInputState = text;
+  }
+};
+
+// Paste in Terminal view
+executePasteTextMock('ls -la');
+if (emulatedTerminalWriteInput && emulatedTerminalWriteInput.url.includes(emulatedShellSessionId) && emulatedTerminalWriteInput.body.input === 'ls -la') {
+  console.log('   ✅ Passed: Text correctly routed to terminal input endpoint in terminal viewMode.');
+} else {
+  console.error('   ❌ Failed: Terminal paste routing failed:', emulatedTerminalWriteInput);
+  failed = true;
+}
+
+// Paste in Chat view
+emulatedViewMode = 'chat';
+executePasteTextMock('Ahoj AI!');
+if (emulatedChatInputState === 'Ahoj AI!') {
+  console.log('   ✅ Passed: Text correctly routed to chat input state in chat viewMode.');
+} else {
+  console.error('   ❌ Failed: Chat paste routing failed:', emulatedChatInputState);
+  failed = true;
+}
+
+// Sub-Test 4e: Fallback Paste Dialog trigger
+console.log('   Simulating Clipboard API failure & Fallback Paste Dialog trigger...');
+let pasteDialogState = { visible: false, tempText: '' };
+const handlePasteMock = (clipboardApiAvailable, throwsError) => {
+  if (!clipboardApiAvailable || throwsError) {
+    // Open the paste fallback modal
+    pasteDialogState = { visible: true, tempText: '' };
+  } else {
+    executePasteTextMock('Clipboard standard paste');
+  }
+};
+
+// Clipboard API missing (HTTP context)
+handlePasteMock(false, false);
+if (pasteDialogState.visible) {
+  console.log('   ✅ Passed: Clipboard API absence (HTTP) correctly opens fallback dialog.');
+} else {
+  console.error('   ❌ Failed: Clipboard API absence should have triggered fallback dialog.');
+  failed = true;
+}
+
+// Clipboard API throws error (iOS permission denied)
+pasteDialogState = { visible: false, tempText: '' };
+handlePasteMock(true, true);
+if (pasteDialogState.visible) {
+  console.log('   ✅ Passed: Clipboard read permission denial correctly opens fallback dialog.');
+} else {
+  console.error('   ❌ Failed: Clipboard permission denial should have triggered fallback dialog.');
+  failed = true;
+}
+
+// Sub-Test 4f: Synthetic Click Swallowing and Non-passive configuration checks
+console.log('   Checking synthetic click swallowing and non-passive touchend config...');
+let wasLongPressedMock = false;
+let preventDefaultCalled = false;
+
+const touchstartMock = () => {
+  wasLongPressedMock = false;
+  // simulating long press timeout elapsed
+  wasLongPressedMock = true;
+};
+
+const touchendMock = (e) => {
+  if (wasLongPressedMock) {
+    e.preventDefault();
+    setTimeout(() => {
+      wasLongPressedMock = false;
+    }, 100);
+  }
+};
+
+const mockEvent = {
+  preventDefault: () => {
+    preventDefaultCalled = true;
+  }
+};
+
+touchstartMock();
+touchendMock(mockEvent);
+
+if (preventDefaultCalled) {
+  console.log('   ✅ Passed: preventDefault called on simulated long-press touchend.');
+} else {
+  console.error('   ❌ Failed: preventDefault was not called on simulated long-press touchend.');
+  failed = true;
+}
+
+// Verify actual chat-area.tsx source code configuration
+try {
+  const chatAreaSrc = fs.readFileSync(path.join(__dirname, '../components/chat-area.tsx'), 'utf8');
+  const touchendPassiveRegex = /document\.addEventListener\(\s*["']touchend["']\s*,\s*handleGlobalTouchEnd\s*,\s*\{\s*passive:\s*false\s*\}\s*\)/;
+  const touchcancelPassiveRegex = /document\.addEventListener\(\s*["']touchcancel["']\s*,\s*handleGlobalTouchEnd\s*,\s*\{\s*passive:\s*false\s*\}\s*\)/;
+
+  if (touchendPassiveRegex.test(chatAreaSrc) && touchcancelPassiveRegex.test(chatAreaSrc)) {
+    console.log('   ✅ Passed: Real touchend & touchcancel event listeners correctly configured with { passive: false } in chat-area.tsx.');
+  } else {
+    console.error('   ❌ Failed: Real touchend or touchcancel listener lacks { passive: false } config in chat-area.tsx.');
+    failed = true;
+  }
+} catch (err) {
+  console.error('   ❌ Failed: Could not read chat-area.tsx source file:', err.message);
   failed = true;
 }
 
