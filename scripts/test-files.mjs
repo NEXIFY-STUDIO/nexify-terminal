@@ -82,7 +82,7 @@ explorerAssertions.forEach(assertion => {
 // 4. Live API operations & path traversal security verify (if server is active)
 console.log('\n🌐 Testing live API file operations and directory traversal protection...');
 const ptyPort = process.env.PORT || '3010';
-const nextPort = '3002'; // Next.js server port
+const nextPort = '3322'; // Next.js server port
 const testFile = '/Users/erikbabcan/test_nexify_file.txt';
 const traversalPath = '/etc/passwd';
 

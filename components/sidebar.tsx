@@ -8,6 +8,7 @@ import {
   Presentation,
   FileText,
   Crown,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -56,6 +57,13 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             >
               <MessageSquare className="w-4 h-4" />
               Chat
+            </Button>
+            <Button
+              variant="ghost"
+              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium text-purple-400"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              Dual Coder
             </Button>
             <Button
               variant="ghost"

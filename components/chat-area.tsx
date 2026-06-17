@@ -23,6 +23,8 @@ import { ParticleOrb } from "@/components/particle-orb"
 import { TerminalView } from "@/components/terminal-view"
 import { FileExplorer } from "@/components/file-explorer"
 import { SystemMonitor } from "@/components/system-monitor"
+import { InsolvencyMonitor } from "@/components/insolvency-monitor"
+import { DualChatArea } from "@/components/dual-chat-area"
 import { useToast } from "@/hooks/use-toast"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -122,7 +124,13 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     role: 'user' | 'assistant' | 'system';
     content: string;
     type?: 'chat' | 'command' | 'output';
-  }>>([])
+  }>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexify_chat_history')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [input, setInput] = useState("")
   const [keystrokeTrigger, setKeystrokeTrigger] = useState(0)
   const [isActivelyTyping, setIsActivelyTyping] = useState(false)
@@ -136,13 +144,40 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   }, [])
 
-  const [activeModel, setActiveModel] = useState({
-    label: "Mistral Small",
-    provider: "mistral",
-    model: "mistral-small-latest"
+  const [activeModel, setActiveModel] = useState<{
+    label: string;
+    provider: string;
+    model: string;
+  }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexify_active_model')
+      return saved ? JSON.parse(saved) : {
+        label: "Mistral Small",
+        provider: "mistral",
+        model: "mistral-small-latest"
+      }
+    }
+    return {
+      label: "Mistral Small",
+      provider: "mistral",
+      model: "mistral-small-latest"
+    }
   })
+
+  // Persistence effects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexify_chat_history', JSON.stringify(messages))
+    }
+  }, [messages])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexify_active_model', JSON.stringify(activeModel))
+    }
+  }, [activeModel])
   const [shellSessionId, setShellSessionId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system'>('chat')
+  const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat'>('chat')
   const [isExecutingCommand, setIsExecutingCommand] = useState(false)
 
   // Custom Audio-Haptic vibration feedback helper for iOS
@@ -468,7 +503,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     };
   }, []);
 
-  const handleViewModeChange = (mode: 'chat' | 'terminal' | 'files' | 'system') => {
+  const handleViewModeChange = (mode: 'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat') => {
     triggerHaptic('light');
     setViewMode(mode);
   };
@@ -487,10 +522,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     const diffX = touch.clientX - touchStartRef.current.x;
     const diffY = touch.clientY - touchStartRef.current.y;
     
-    // Switch between panels (Chat <-> Terminal <-> Files <-> System) on clean swipe
+    // Switch between panels (Chat <-> Terminal <-> Files <-> System <-> Insolvency) on clean swipe
     if (Math.abs(diffX) > 100 && Math.abs(diffY) < 40) {
-      const modes: ('chat' | 'terminal' | 'files' | 'system')[] = ['chat', 'terminal', 'files', 'system'];
-      const currentIndex = modes.indexOf(viewMode);
+      const modes: ('chat' | 'terminal' | 'files' | 'system' | 'insolvency')[] = ['chat', 'terminal', 'files', 'system', 'insolvency'];
+      const currentIndex = modes.indexOf(viewMode as any);
       
       if (diffX > 0) {
         if (currentIndex > 0) {
@@ -1090,6 +1125,26 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             >
               System
             </Button>
+            <Button
+              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
+                viewMode === 'insolvency'
+                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+              }`}
+              onClick={() => handleViewModeChange('insolvency')}
+            >
+              Insolvency
+            </Button>
+            <Button
+               className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
+                 viewMode === 'dual-chat'
+                   ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
+                   : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+               }`}
+               onClick={() => handleViewModeChange('dual-chat')}
+            >
+              Dual Coder
+            </Button>
           </div>
 
           {/* Row 1: Active Model Selector, Configuration, Export */}
@@ -1158,6 +1213,17 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
                   Advanced
                 </button>
+                <div className="h-px bg-border/20 my-1" />
+                <button
+                  className="dropdown-item text-[10px] text-destructive hover:bg-destructive/10 w-full text-left"
+                  onClick={() => {
+                    setMessages([])
+                    setConfigDropdownOpen(false)
+                    triggerHaptic('medium')
+                  }}
+                >
+                  Clear Chat
+                </button>
               </div>
             )}
           </div>
@@ -1223,9 +1289,15 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
       {/* Main Content - flex layout with input at absolute bottom */}
       <div className="relative z-10 flex-1 flex flex-col items-center px-6 pt-4 pb-4 overflow-hidden w-full">
-        {viewMode === 'system' ? (
+        {viewMode === 'dual-chat' ? (
+          <DualChatArea />
+        ) : viewMode === 'system' ? (
           <div className="flex-1 w-full max-w-7xl h-full pb-4">
             <SystemMonitor />
+          </div>
+        ) : viewMode === 'insolvency' ? (
+          <div className="flex-1 w-full max-w-7xl h-full pb-4">
+            <InsolvencyMonitor />
           </div>
         ) : viewMode === 'files' ? (
           <div className="flex-1 w-full max-w-7xl h-full pb-4">
@@ -1382,10 +1454,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                       </div>
                       
                       {isExpanded && (
-                        <div className="terminal-box" data-copyable-text={cleanAnsi(group.output)}>
+                        <div className="terminal-box" data-copyable-text={cleanAnsi(group.output || '')}>
                           <div className="terminal-header">Terminal (local)</div>
                           <div className="terminal-content">
-                            {cleanAnsi(group.output)}
+                            {cleanAnsi(group.output || '')}
                             {group.isExecuting && <span className="cursor"></span>}
                           </div>
                         </div>
@@ -1402,7 +1474,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         )}
 
         {/* Input Area - positioned at absolute bottom with safe area offset + 12px padding */}
-        {viewMode !== 'terminal' && (
+        {viewMode !== 'terminal' && viewMode !== 'dual-chat' && (
           <div className="w-full max-w-4xl mt-auto mb-0 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
             {isRecording && (
               <div className="mb-3 input-3d bg-gradient-to-r from-black/90 via-black/95 to-black/90 backdrop-blur-xl rounded-full border border-border/50 px-6 py-3 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">

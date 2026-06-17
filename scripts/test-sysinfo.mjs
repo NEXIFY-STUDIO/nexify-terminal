@@ -73,7 +73,7 @@ monitorAssertions.forEach(assertion => {
 
 // 4. Live API sysinfo query & json payload format verify (if Next.js is running)
 console.log('\n🌐 Testing live API sysinfo metrics retrieval and parsing...');
-const nextPort = '3002'; // Next.js port
+const nextPort = '3322'; // Next.js port
 
 try {
   const res = await fetch(`http://localhost:${nextPort}/api/sysinfo`);

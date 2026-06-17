@@ -12,7 +12,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching App Shell and Static Assets');
-      return cache.addAll(STATIC_ASSETS);
+      return Promise.all(
+        STATIC_ASSETS.map((asset) => {
+          return cache.add(asset).catch((err) => {
+            console.warn(`[Service Worker] Failed to cache asset: ${asset}`, err);
+          });
+        })
+      );
     }).then(() => self.skipWaiting())
   );
 });

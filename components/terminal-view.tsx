@@ -19,6 +19,7 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       // Dynamically import xterm to prevent SSR issues in Next.js
       const { Terminal } = await import("xterm")
       const { FitAddon } = await import("xterm-addon-fit")
+      await import("xterm/css/xterm.css")
 
       if (isDestroyed || !containerRef.current) return
 

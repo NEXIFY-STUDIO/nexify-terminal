@@ -50,7 +50,7 @@ function loadEnv() {
 
 loadEnv();
 
-const WEB_PORT = process.env.WEB_PORT || process.env.NEXT_PORT || '3000';
+const WEB_PORT = process.env.WEB_PORT || process.env.NEXT_PORT || '3322';
 const API_ENDPOINT = process.env.PANDORA_API_ENDPOINT || `http://localhost:${WEB_PORT}/api/pandora/projects/create`;
 const VIBECRAFT_DOMAIN = 'vibecraft.rubberduck.sk';
 

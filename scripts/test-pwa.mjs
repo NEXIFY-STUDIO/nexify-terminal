@@ -131,7 +131,7 @@ checkFile(systemMonitorPath, 'System Monitor components/system-monitor.tsx', mon
 // 11. Run live endpoints verification
 console.log('\n🌐 Verification of live challenge API endpoint...');
 try {
-  const nextPort = '3002';
+  const nextPort = '3322';
   const res = await fetch(`http://localhost:${nextPort}/api/auth/challenge`);
   if (res.ok) {
     const data = await res.json();

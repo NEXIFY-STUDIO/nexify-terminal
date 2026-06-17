@@ -243,7 +243,7 @@ export function SystemMonitor() {
                     className={`h-full transition-all duration-500 rounded-full ${
                       data?.battery?.isAcConnected
                         ? "bg-emerald-400"
-                        : (data.battery.percent || 0) < 20
+                        : (data?.battery?.percent || 0) < 20
                         ? "bg-red-500 animate-pulse"
                         : "bg-amber-400"
                     }`}

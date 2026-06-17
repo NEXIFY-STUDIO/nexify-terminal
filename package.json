@@ -4,17 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "dev:web": "next dev -p 3000",
+    "prebuild": "npm run test:integrity-60",
+    "build": "next build --webpack",
+    "dev": "next dev -p 3322 -H 0.0.0.0",
+    "dev:web": "next dev -p 3322 -H 0.0.0.0",
     "dev:hack-api": "node services/hacking-api/server.js",
     "dev:ai-proxy": "node services/ai-proxy/ai-proxy.mjs",
     "dev:all": "bash scripts/dev-all.sh",
-    "lint": "eslint .",
-    "start": "next start",
+    "lint": "npx tsc --noEmit --skipLibCheck",
+    "start": "next start -p 3322 -H 0.0.0.0",
+    "prepare:prod": "node scripts/prepare-production.mjs",
     "verify:connector": "node scripts/verify-pandora-connector.mjs",
     "smoke:pandora": "node scripts/smoke-pandora-quality.mjs",
-    "test:security": "node scripts/test-security.mjs"
+    "test:security": "node scripts/test-security.mjs",
+    "test:integrity-60": "node scripts/test-integrity-suite.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -56,15 +56,15 @@ function getRateLimitForPath(pathname: string): { max: number; window: number } 
  */
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  let normalizedIp = '127.0.0.1';
 
   // 0. Enforce Tailscale Device Lockdown
-  // Only apply to routes that are not static assets to prevent sub-resources fetch locks
   const isStaticAsset = pathname.startsWith('/_next/') || pathname.startsWith('/icons/') || pathname.includes('.');
   if (!isStaticAsset) {
-    const rawClientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+    const rawClientIp = (request as any).ip || request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip') || '127.0.0.1';
     
     // Normalize localhost IPv6 and IPv6-mapped IPv4 addresses (e.g. ::ffff:100.103.153.97)
-    let normalizedIp = rawClientIp;
+    normalizedIp = rawClientIp;
     if (normalizedIp.startsWith('::ffff:')) {
       normalizedIp = normalizedIp.substring(7);
     }
@@ -79,8 +79,13 @@ export function middleware(request: NextRequest) {
       if (ip.trim()) allowedIps.push(ip.trim());
     });
 
+    // Auto-allow any Tailscale IPv4/IPv6 or local private network IP (LAN/Wi-Fi)
+    if (isPrivateIp(normalizedIp) || normalizedIp.startsWith('100.') || normalizedIp.startsWith('fd7a:115c:a1e0:')) {
+      allowedIps.push(normalizedIp);
+    }
+
     if (!allowedIps.includes(normalizedIp)) {
-      console.warn(`[SECURITY LOCKDOWN] Blocked request to ${pathname} from unauthorized IP: ${normalizedIp}`);
+      console.warn(`[SECURITY LOCKDOWN] Blocked request to ${pathname} from unauthorized IP: ${normalizedIp} (raw: ${rawClientIp})`);
       return new NextResponse(
         'Access Denied: Connection restricted to authorized Tailscale devices only.',
         {
@@ -94,8 +99,8 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const protocol = request.nextUrl.protocol;
 
-  // 1. Enforce HTTPS in production
-  if (!isDevelopment() && protocol !== 'https:') {
+  // 1. Enforce HTTPS in production (except for localhost, LAN, and Tailscale private connections)
+  if (!isDevelopment() && protocol !== 'https:' && !isPrivateIp(normalizedIp)) {
     const httpsUrl = new URL(request.nextUrl);
     httpsUrl.protocol = 'https:';
     return NextResponse.redirect(httpsUrl, { status: 301 });
@@ -113,6 +118,11 @@ export function middleware(request: NextRequest) {
     response.headers.set(key, value);
   }
 
+  // 2.5. Remove HSTS for local/private connections to prevent browser-side HTTPS loops
+  if (isPrivateIp(normalizedIp)) {
+    response.headers.delete('Strict-Transport-Security');
+  }
+
   // 3. Add additional security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
@@ -122,7 +132,6 @@ export function middleware(request: NextRequest) {
   if (RATE_LIMIT_CONFIG.enabled && shouldRateLimit(pathname) && pathname.startsWith('/api/')) {
     const clientIp = getClientIp({
       headers: Object.fromEntries(request.headers.entries()),
-      ip: request.ip,
     });
 
     console.log(`[MIDDLEWARE] API Request: ${pathname}, Client IP: ${clientIp}, Private: ${isPrivateIp(clientIp)}, RATE_LIMIT_CONFIG.enabled: ${RATE_LIMIT_CONFIG.enabled}`);
