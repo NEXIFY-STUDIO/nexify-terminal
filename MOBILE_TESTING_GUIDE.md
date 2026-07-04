@@ -5,7 +5,49 @@
 
 ## Quick Start
 
-### Run Tests Locally
+### iPhone 17 Air — 300 Test Suite (Hybrid)
+
+```bash
+# Start the dev stack (port 3322)
+pnpm dev:all
+
+# Run all 300 tests (250 static + 50 live Playwright)
+pnpm test:iphone17-300
+
+# Static/mock only (#001–#250)
+pnpm test:iphone17-static
+
+# Live Playwright only (#251–#300, requires server on :3322)
+pnpm test:iphone17-live
+```
+
+First-time Playwright setup:
+
+```bash
+pnpm install
+npx playwright install chromium
+```
+
+**Test categories (300 total):**
+
+| Phase | IDs | Count | Focus |
+|---|---|---|---|
+| Viewport & Display | #001–#040 | 40 | viewport meta, overflow, touch lock |
+| PWA & Standalone | #041–#075 | 35 | manifest, SW, WebAuthn |
+| Safe Area & Dynamic Island | #076–#105 | 30 | env(safe-area-inset-*), header/footer padding |
+| Lockscreen & Auth | #106–#140 | 35 | PIN, Face ID, shake animations |
+| Gestures & Navigation | #141–#180 | 40 | swipe, long-press, paste routing |
+| Haptics & Audio | #181–#205 | 25 | 60Hz Web Audio, vibrate fallback |
+| WebGL & Battery | #206–#240 | 35 | InstancedMesh, dpr 1.5, poll throttle |
+| UI Animations | #241–#250 | 10 | animate-pulse, shake, slide-in |
+| Live Lockscreen | #251–#260 | 10 | PIN keypad, unlock flow |
+| Live Viewport | #261–#270 | 10 | scroll lock, viewport-fit |
+| Live Swipe | #271–#280 | 10 | tab navigation |
+| Live Safe Area | #281–#288 | 8 | layout bounds |
+| Live WebGL | #289–#294 | 6 | canvas animation |
+| Live UI Animations | #295–#300 | 6 | transitions smoke |
+
+### Run Tests Locally (legacy)
 
 ```bash
 # Build the project
@@ -14,16 +56,19 @@ pnpm build
 # Start the dev server
 pnpm dev
 
-# In another terminal, run visual tests
-npm run test:mobile
+# In another terminal, run PWA integration tests
+node scripts/test-pwa.mjs
 ```
 
-### Test on iPhone 17 Air
+### Test on iPhone 17 Air (physical device via Tailscale)
 
 ```bash
-# Set device and open app
+# Open on iPhone Safari / PWA
+# http://100.103.153.97:3322
+
+# Or use agent-browser locally
 agent-browser set device "iPhone 17"
-agent-browser open http://localhost:3000
+agent-browser open http://localhost:3322
 
 # Take screenshot
 agent-browser screenshot

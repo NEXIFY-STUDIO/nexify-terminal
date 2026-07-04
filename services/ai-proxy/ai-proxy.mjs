@@ -7,12 +7,16 @@ const DEFAULT_PROVIDER = 'github-models';
 const DEFAULT_GITHUB_MODEL = 'openai/gpt-4.1-mini';
 const DEFAULT_MISTRAL_MODEL = 'mistral-small-latest';
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GAMMA_MODEL = 'gamma-4b4';
 const DEFAULT_SYSTEM_PROMPT = [
   'You are the NEXIFY TECH CENTER assistant.',
-  'You MUST always communicate and answer in the Slovak language (slovenský jazyk).',
-  'Answer as a concise senior engineer.',
-  'Prefer practical, implementation-ready answers in Slovak.',
-  'If the user asks about commands, frameworks, or deployment, answer directly and clearly in Slovak.',
+  'You MUST always communicate and answer EXCLUSIVELY in the Slovak language (slovenský jazyk).',
+  'You MUST listen to EVERY SINGLE WORD the user says and NEVER skip, ignore, or misinterpret anything.',
+  'You MUST NEVER generate nonsense, hallucinate, or make up information.',
+  'If you are unsure, ASK for clarification instead of guessing.',
+  'Answer as a concise, precise senior engineer with implementation-ready solutions.',
+  'Be direct, clear, and never add unnecessary words or fluff.',
+  'Every response must be useful, accurate, and follow the user instructions EXACTLY.',
 ].join(' ');
 
 function normalizeProvider(provider = '') {
@@ -20,6 +24,7 @@ function normalizeProvider(provider = '') {
   if (normalized === 'github' || normalized === 'github-models') return 'github-models';
   if (normalized === 'mistral' || normalized === 'mistral-api') return 'mistral';
   if (normalized === 'gemini' || normalized === 'google' || normalized === 'google-gemini') return 'gemini';
+  if (normalized === 'gamma' || normalized === 'gamma-4b4' || normalized === 'gamma4b4') return 'gamma';
   return DEFAULT_PROVIDER;
 }
 
@@ -41,6 +46,9 @@ export function getAiProxyConfig(env = process.env) {
     mistralModel: env.MISTRAL_MODEL || DEFAULT_MISTRAL_MODEL,
     geminiApiKey: env.GEMINI_API_KEY || '',
     geminiModel: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+    gammaApiKey: env.GAMMA_API_KEY || '',
+    gammaModel: env.GAMMA_MODEL || DEFAULT_GAMMA_MODEL,
+    gammaEndpoint: env.GAMMA_ENDPOINT || 'https://api.gamma.ai/v1/chat/completions',
   };
 }
 
@@ -54,6 +62,7 @@ function resolveProviderOverride(config, requested) {
 function getActiveModel(config) {
   if (config.provider === 'mistral') return config.mistralModel;
   if (config.provider === 'gemini') return config.geminiModel;
+  if (config.provider === 'gamma') return config.gammaModel;
   return config.githubModel;
 }
 
@@ -81,6 +90,7 @@ function extractGeminiAnswer(payload) {
 
 function extractAnswer(payload, provider) {
   if (provider === 'gemini') return extractGeminiAnswer(payload);
+  if (provider === 'gamma') return parseResponseContent(payload?.choices?.[0]?.message?.content);
   const answer = parseResponseContent(payload?.choices?.[0]?.message?.content);
   return answer || null;
 }
@@ -143,6 +153,29 @@ export function buildProviderRequest(question, config, apiKeyOverride) {
     };
   }
 
+  if (config.provider === 'gamma') {
+    if (!config.gammaApiKey) {
+      throw new Error('Missing GAMMA_API_KEY for provider=gamma');
+    }
+    return {
+      url: config.gammaEndpoint,
+      model: config.gammaModel,
+      options: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.gammaApiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.gammaModel,
+          messages,
+          temperature: config.temperature,
+          max_tokens: config.maxTokens,
+        }),
+      },
+    };
+  }
+
   if (!config.githubToken) {
     throw new Error('Missing GITHUB_MODELS_TOKEN for provider=github-models');
   }
@@ -196,7 +229,11 @@ export function createAiProxyApp({
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/health', (_req, res) => {
-    const model = config.provider === 'mistral' ? config.mistralModel : config.githubModel;
+    let model;
+    if (config.provider === 'mistral') model = config.mistralModel;
+    else if (config.provider === 'gemini') model = config.geminiModel;
+    else if (config.provider === 'gamma') model = config.gammaModel;
+    else model = config.githubModel;
     res.json({ status: 'ok', provider: config.provider, model });
   });
 

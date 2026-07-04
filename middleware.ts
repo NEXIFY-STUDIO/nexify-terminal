@@ -84,7 +84,8 @@ export function middleware(request: NextRequest) {
       allowedIps.push(normalizedIp);
     }
 
-    if (!allowedIps.includes(normalizedIp)) {
+    const disableLockdown = process.env.DISABLE_TAILSCALE_LOCKDOWN === 'true';
+    if (!allowedIps.includes(normalizedIp) && !disableLockdown) {
       console.warn(`[SECURITY LOCKDOWN] Blocked request to ${pathname} from unauthorized IP: ${normalizedIp} (raw: ${rawClientIp})`);
       return new NextResponse(
         'Access Denied: Connection restricted to authorized Tailscale devices only.',

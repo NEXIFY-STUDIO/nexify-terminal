@@ -8,14 +8,14 @@
 
 const stripTrailingSlash = (url: string): string => url.replace(/\/+$/, '');
 
-/** Hacking API (tools + remote shell). Defaults to local dev port 3010. */
+/** Hacking API (tools + remote shell). Defaults to local dev port 3021. */
 export function getHackApiUrl(): string {
-  return stripTrailingSlash(process.env.HACK_API_URL || 'http://127.0.0.1:3010');
+  return stripTrailingSlash(process.env.HACK_API_URL || 'http://127.0.0.1:3021');
 }
 
-/** AI proxy service. Defaults to local dev port 8787. */
+/** AI proxy service. Defaults to local dev port 8788. */
 export function getAiProxyUrl(): string {
-  return stripTrailingSlash(process.env.AI_PROXY_URL || 'http://127.0.0.1:8787');
+  return stripTrailingSlash(process.env.AI_PROXY_URL || 'http://127.0.0.1:8788');
 }
 
 /** Server-side token for the hacking API tool endpoints (X-Hack-Token). */
