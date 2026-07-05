@@ -14,6 +14,7 @@ import {
   detectFailedLast,
   getRecentOutputFromMessages,
 } from '../lib/operator/sessionContext.mjs';
+import { buildShellFollowUpQuestion } from '../lib/operator/followUpPrompt.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -37,7 +38,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 15 tests\n');
+console.log('📱 Nexify Operator UX — 18 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -130,7 +131,24 @@ test('15 — status strip shows failed indicator', () => {
   assert(src.includes('sessionFields.failedLast'), 'missing failed badge');
 });
 
+test('16 — follow-up prompt for success', () => {
+  const q = buildShellFollowUpQuestion('ls', { failedLast: false, recentOutput: 'file.txt' });
+  assert(q.includes('ls') && q.includes('recent_output'), 'success follow-up');
+});
+
+test('17 — follow-up prompt for failure', () => {
+  const q = buildShellFollowUpQuestion('badcmd', { failedLast: true, recentOutput: 'zsh: not found' });
+  assert(q.includes('failed_last:true') || q.includes('zlyhal'), 'failure follow-up');
+});
+
+test('18 — chat-area proactive follow-up after shell', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('sendOperatorFollowUp'), 'missing sendOperatorFollowUp');
+  assert(src.includes('pendingShellFollowUpRef'), 'missing pending follow-up ref');
+  assert(src.includes('buildShellFollowUpQuestion'), 'missing follow-up prompt import');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/15 passed`);
+console.log(`Operator UX: ${passed}/18 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

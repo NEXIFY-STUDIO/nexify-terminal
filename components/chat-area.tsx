@@ -32,6 +32,7 @@ import {
   applyInputModePrefix,
 } from "@/lib/operator/inputMode.mjs"
 import { buildSessionFields } from "@/lib/operator/sessionContext.mjs"
+import { buildShellFollowUpQuestion } from "@/lib/operator/followUpPrompt.mjs"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -201,6 +202,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
   // Persistence effects
   useEffect(() => {
+    messagesRef.current = messages
     if (typeof window !== 'undefined') {
       localStorage.setItem('nexify_chat_history', JSON.stringify(messages))
     }
@@ -214,6 +216,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   const [shellSessionId, setShellSessionId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat'>('chat')
   const [isExecutingCommand, setIsExecutingCommand] = useState(false)
+  const messagesRef = useRef(messages)
+  const pendingShellFollowUpRef = useRef<string | null>(null)
+  const wasExecutingRef = useRef(false)
 
   // Custom Audio-Haptic vibration feedback helper for iOS
   const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error') => {
@@ -744,7 +749,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
 
     setIsExecutingCommand(true);
-    
+    pendingShellFollowUpRef.current = cmdText;
+
     // Add command to message history
     const cmdId = Math.random().toString();
     setMessages(prev => [
@@ -772,8 +778,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
-  const buildOperatorContext = () => {
-    const session = buildSessionFields(messages);
+  const buildOperatorContext = (snapshot = messages) => {
+    const session = buildSessionFields(snapshot);
     return {
       workspaceRoot: '/Users/erikbabcan',
       viewMode,
@@ -784,6 +790,69 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       access: 'Tailscale → domáci uzol (Mac)',
     };
   };
+
+  const sendOperatorFollowUp = async (command: string) => {
+    const snapshot = messagesRef.current;
+    const session = buildSessionFields(snapshot);
+    const question = buildShellFollowUpQuestion(command, session);
+
+    const assistantMsgId = Math.random().toString();
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantMsgId, role: 'assistant', content: '...', type: 'chat' },
+    ]);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          provider: activeModel.provider,
+          model: activeModel.model,
+          context: {
+            ...buildOperatorContext(snapshot),
+            lastCommand: command,
+          },
+        }),
+      });
+
+      if (!res.ok) throw new Error(`AI proxy returned ${res.status}`);
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? { ...msg, content: data.answer || 'No response.' }
+            : msg
+        )
+      );
+      triggerHaptic('light');
+    } catch (err: any) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? { ...msg, content: `Follow-up error: ${err.message}` }
+            : msg
+        )
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (wasExecutingRef.current && !isExecutingCommand && pendingShellFollowUpRef.current) {
+      const cmd = pendingShellFollowUpRef.current;
+      pendingShellFollowUpRef.current = null;
+      const timer = setTimeout(() => {
+        void sendOperatorFollowUp(cmd);
+      }, 500);
+      wasExecutingRef.current = isExecutingCommand;
+      return () => clearTimeout(timer);
+    }
+    wasExecutingRef.current = isExecutingCommand;
+  }, [isExecutingCommand]);
 
   const sendAiPrompt = async (promptText: string) => {
     // Add user prompt to message history
