@@ -24,6 +24,8 @@ jobs:
           pnpm install --frozen-lockfile
           npm install --prefix services/hacking-api --ignore-scripts
           npm install --prefix services/ai-proxy --ignore-scripts
+      - name: Bootstrap CI env
+        run: cp .env.ci .env.local
       - name: Typecheck
         run: pnpm run lint
       - name: Start AI proxy (integration smoke)
