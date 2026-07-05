@@ -16,10 +16,21 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files — never commit secrets
 .env*
 !.env.ci
 !.env.example
+.env.local.bak*
+.env*.bak*
+
+# launchd runtime logs (local Mac)
+launchd-out.log
+launchd-err.log
+
+# local IDE / test artifacts
+.cursor/
+test-results/
+docs/
 
 # vercel
 .vercel
