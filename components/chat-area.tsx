@@ -31,6 +31,7 @@ import {
   cycleInputMode,
   applyInputModePrefix,
 } from "@/lib/operator/inputMode.mjs"
+import { buildSessionFields } from "@/lib/operator/sessionContext.mjs"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -639,8 +640,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
   const isTyping = input.length > 0;
   const inputMode = detectInputMode(input);
-  const lastCommandPreview =
-    [...messages].reverse().find((m) => m.type === 'command')?.content?.replace(/^\$\s*/, '').trim() || '—';
+  const sessionFields = buildSessionFields(messages);
+  const lastCommandPreview = sessionFields.lastCommand || '—';
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -772,12 +773,13 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   };
 
   const buildOperatorContext = () => {
-    const lastCommandMsg = [...messages].reverse().find((m) => m.type === 'command');
-    const lastCommand = lastCommandMsg?.content?.replace(/^\$\s*/, '').trim() || null;
+    const session = buildSessionFields(messages);
     return {
       workspaceRoot: '/Users/erikbabcan',
       viewMode,
-      lastCommand,
+      lastCommand: session.lastCommand,
+      recentOutput: session.recentOutput,
+      failedLast: session.failedLast,
       stack: 'Nexify :3322 · hack-api :3021 · ai-proxy :8788',
       access: 'Tailscale → domáci uzol (Mac)',
     };
@@ -1341,6 +1343,12 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           <span>Nexify :3322 · :3021 · :8788</span>
           <span className="mx-1.5 text-border">·</span>
           <span className="text-zinc-400">last: {lastCommandPreview}</span>
+          {sessionFields.failedLast && (
+            <>
+              <span className="mx-1.5 text-border">·</span>
+              <span className="text-red-400/90">failed</span>
+            </>
+          )}
         </div>
       )}
 

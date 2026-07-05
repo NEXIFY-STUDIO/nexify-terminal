@@ -23,7 +23,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('🎭 Nexify Persona — 13 tests\n');
+console.log('🎭 Nexify Persona — 16 tests\n');
 
 await run('01 — Si Nexify, nie chatbot', () => {
   assert(prompt.includes('Si Nexify — nie chatbot'), 'missing core identity');
@@ -98,7 +98,22 @@ await run('13 — $ už beží → bez nového ACTION', () => {
   assert(prompt.includes('INTENT + RESULT'), 'missing INTENT+RESULT for shell input');
 });
 
+await run('14 — SESSION-aware recent_output', () => {
+  assert(prompt.includes('recent_output'), 'missing recent_output rule');
+  assert(prompt.includes('500 znakov'), 'missing output limit hint');
+});
+
+await run('15 — failed_last neopakuje príkaz', () => {
+  assert(prompt.includes('failed_last'), 'missing failed_last');
+  assert(prompt.includes('neopakuj last_command'), 'missing no-repeat rule');
+});
+
+await run('16 — úspešný last_command bez opakovania ACTION', () => {
+  assert(prompt.includes('failed_last: false'), 'missing success branch');
+  assert(prompt.includes('ACTION nechaj prázdne'), 'missing empty ACTION on repeat');
+});
+
 console.log('\n==================================================');
-console.log(`Nexify Persona: ${passed}/13 passed`);
+console.log(`Nexify Persona: ${passed}/16 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

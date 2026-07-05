@@ -9,6 +9,11 @@ import {
   cycleInputMode,
   applyInputModePrefix,
 } from '../lib/operator/inputMode.mjs';
+import {
+  buildSessionFields,
+  detectFailedLast,
+  getRecentOutputFromMessages,
+} from '../lib/operator/sessionContext.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -32,7 +37,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 10 tests\n');
+console.log('📱 Nexify Operator UX — 15 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -91,7 +96,41 @@ test('10 — chat-area wires tap-to-run and input mode', () => {
   assert(src.includes('operator-status'), 'missing status strip');
 });
 
+test('11 — recent_output truncated to 500 chars', () => {
+  const long = 'x'.repeat(600);
+  const out = getRecentOutputFromMessages([{ type: 'output', content: long }]);
+  assert(out?.length === 500, `expected 500, got ${out?.length}`);
+  assert(out?.endsWith('x'), 'should keep tail');
+});
+
+test('12 — detectFailedLast catches zsh error', () => {
+  assert(detectFailedLast('zsh: command not found: foobar'), 'zsh fail');
+  assert(!detectFailedLast('Everything OK\nDone.'), 'ok output');
+});
+
+test('13 — buildSessionFields maps command + failure', () => {
+  const session = buildSessionFields([
+    { type: 'command', content: 'badcmd' },
+    { type: 'output', content: 'zsh: command not found: badcmd' },
+  ]);
+  assert(session.lastCommand === 'badcmd', 'last command');
+  assert(session.failedLast === true, 'failed flag');
+  assert(session.recentOutput?.includes('command not found'), 'recent output');
+});
+
+test('14 — chat-area sends recentOutput and failedLast', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('buildSessionFields'), 'missing buildSessionFields');
+  assert(src.includes('recentOutput'), 'missing recentOutput in context');
+  assert(src.includes('failedLast'), 'missing failedLast in context');
+});
+
+test('15 — status strip shows failed indicator', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('sessionFields.failedLast'), 'missing failed badge');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/10 passed`);
+console.log(`Operator UX: ${passed}/15 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

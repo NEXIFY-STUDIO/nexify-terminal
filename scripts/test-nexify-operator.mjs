@@ -103,7 +103,18 @@ test('11 — SESSION includes Tailscale access line', () => {
 test('12 — empty optional context omits absent fields', () => {
   const out = formatQuestionWithContext('hello', { workspaceRoot: '/tmp' });
   assert(!out.includes('last_command:'), 'should omit last_command when absent');
+  assert(!out.includes('recent_output:'), 'should omit recent_output when absent');
   assert(out.includes('workspace: /tmp'), 'should keep workspace');
+});
+
+test('12b — SESSION includes recent_output and failed_last', () => {
+  const out = formatQuestionWithContext('fix it', {
+    ...sampleContext,
+    recentOutput: 'zsh: command not found: foo',
+    failedLast: true,
+  });
+  assert(out.includes('recent_output: zsh: command not found: foo'), 'missing recent_output');
+  assert(out.includes('failed_last: true'), 'missing failed_last true');
 });
 
 test('13 — buildProviderRequest (mistral) embeds Operator system prompt', () => {
@@ -156,6 +167,8 @@ test('18 — chat-area defines buildOperatorContext', () => {
   assert(src.includes('buildOperatorContext'), 'missing buildOperatorContext');
   assert(src.includes("workspaceRoot: '/Users/erikbabcan'"), 'missing workspaceRoot');
   assert(src.includes('lastCommand'), 'missing lastCommand extraction');
+  assert(src.includes('recentOutput'), 'missing recentOutput in context');
+  assert(src.includes('failedLast'), 'missing failedLast in context');
 });
 
 test('19 — chat-area sends context in /api/ai POST body', () => {
@@ -185,7 +198,7 @@ test('20 — live AI proxy rejects empty question (integration)', async () => {
   }
 });
 
-console.log('🧪 Nexify Operator — 20 tests\n');
+console.log('🧪 Nexify Operator — 21 tests\n');
 
 for (const { name, fn } of tests) {
   try {
@@ -200,7 +213,7 @@ for (const { name, fn } of tests) {
 }
 
 console.log('\n==================================================');
-console.log(`Nexify Operator: ${passed}/20 passed`);
+console.log(`Nexify Operator: ${passed}/21 passed`);
 console.log('==================================================');
 
 if (failed > 0) {

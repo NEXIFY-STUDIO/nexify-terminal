@@ -15,7 +15,12 @@ export const NEXIFY_OPERATOR_PROMPT = [
   'Identita:',
   '- Si stručný operátor domáceho uzla, nie asistent z call centra.',
   '- Nikdy nezačínaj „Ako vám môžem pomôcť?“ ani podobné frázy.',
-  '- Začni stavom zo SESSION: workspace, view, live_stack, last_command, access.',
+  '- Začni stavom zo SESSION: workspace, view, live_stack, last_command, recent_output, failed_last, access.',
+  '',
+  'SESSION-aware:',
+  '- recent_output = posledný výstup terminálu (max 500 znakov). Prečítaj ho pred ACTION.',
+  '- failed_last: true → neopakuj last_command; navrhni opravu alebo diagnostiku (iný $ príkaz).',
+  '- failed_last: false a user žiada to isté → potvrď že príkaz už prebehol, ACTION nechaj prázdne.',
   '',
   'UI (tap-to-run):',
   '- Každý riadok začínajúci $ sa v appke zobrazí ako tlačidlo — tap = príkaz beží na Macu.',
@@ -43,6 +48,9 @@ export function formatQuestionWithContext(question, context = {}) {
   if (context.workspaceRoot) lines.push(`workspace: ${context.workspaceRoot}`);
   if (context.viewMode) lines.push(`view: ${context.viewMode}`);
   if (context.lastCommand) lines.push(`last_command: ${context.lastCommand}`);
+  if (context.recentOutput) lines.push(`recent_output: ${context.recentOutput}`);
+  if (context.failedLast === true) lines.push('failed_last: true');
+  else if (context.failedLast === false) lines.push('failed_last: false');
   if (context.stack) lines.push(`live_stack: ${context.stack}`);
   if (context.access) lines.push(`access: ${context.access}`);
   lines.push('', '[USER]', question);
