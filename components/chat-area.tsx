@@ -33,6 +33,7 @@ import {
 } from "@/lib/operator/inputMode.mjs"
 import { buildSessionFields } from "@/lib/operator/sessionContext.mjs"
 import { buildShellFollowUpQuestion } from "@/lib/operator/followUpPrompt.mjs"
+import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -1261,6 +1262,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               Dual Coder
             </Button>
           </div>
+
+          {/* Manuál — kompletný návod v appke */}
+          <NexifyManualSheet onOpen={() => triggerHaptic("light")} />
 
           {/* Row 1: Active Model Selector, Configuration, Export */}
           <div className="relative">

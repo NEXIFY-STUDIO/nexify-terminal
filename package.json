@@ -18,6 +18,7 @@
     "smoke:pandora": "node scripts/smoke-pandora-quality.mjs",
     "test:security": "node scripts/test-security.mjs",
     "test:integrity-60": "node scripts/test-integrity-suite.mjs",
+    "test:integrity-61": "node scripts/test-integrity-suite.mjs",
     "test:iphone17-300": "node scripts/test-iphone17-air-300.mjs",
     "test:iphone17-static": "node scripts/test-iphone17-air-300.mjs --static-only",
     "test:iphone17-live": "playwright test -c scripts/iphone17-playwright/playwright.config.ts",

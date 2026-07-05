@@ -30,6 +30,11 @@
 11. [Testy a CI](#11-testy-a-ci)
 12. [Riešenie problémov](#12-riešenie-problémov)
 13. [Bezpečnosť](#13-bezpečnosť)
+14. [Presné cesty — copy-paste príkazy](#14-presné-cesty--copy-paste-príkazy)
+15. [ENV — Mistral kľúče (presné súbory)](#15-env--mistral-kľúče-presné-súbory)
+16. [iPhone checklist + PWA + Face ID](#16-iphone-checklist--pwa--face-id)
+17. [Čo funguje vs. stub](#17-čo-funguje-vs-stub)
+18. [Manuál v appke (tlačidlo)](#18-manuál-v-appke-tlačidlo)
 
 ---
 
@@ -355,6 +360,12 @@ Po každej zmene kódu alebo `.env.local`:
 launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
 ```
 
+Plist Launch Agenta:
+
+```
+/Users/erikbabcan/Library/LaunchAgents/com.nexify.terminal.plist
+```
+
 ---
 
 ## 10. Konfigurácia `.env.local`
@@ -383,7 +394,7 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 60 integrity + security + PIN + 21 operator + 18 persona + 18 UX = **111** |
+| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 18 persona + 19 UX = **113** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
 | `pnpm run test:nexify-persona` | Prompt pravidlá v1–v4 |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
@@ -441,4 +452,168 @@ GitHub Actions: `.github/workflows/ci.yml` — beží na každý push do `main`.
 
 ---
 
-*Nexify Terminal · private repo · main branch · 111 automated tests*
+## 14. Presné cesty — copy-paste príkazy
+
+Všetky príkazy predpokladajú tento projekt:
+
+```bash
+export NEXIFY_ROOT="/Users/erikbabcan/aaa-terminalnexify2-with-v-main"
+cd "$NEXIFY_ROOT"
+```
+
+### Reštart stacku (najčastejší príkaz)
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
+```
+
+### Launch Agent load / unload
+
+```bash
+launchctl load /Users/erikbabcan/Library/LaunchAgents/com.nexify.terminal.plist
+launchctl unload /Users/erikbabcan/Library/LaunchAgents/com.nexify.terminal.plist
+launchctl list | grep com.nexify.terminal
+```
+
+### Ručný štart stacku
+
+```bash
+cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
+pnpm dev:all
+```
+
+### Logy
+
+```bash
+tail -f /Users/erikbabcan/aaa-terminalnexify2-with-v-main/launchd-out.log
+tail -f /Users/erikbabcan/aaa-terminalnexify2-with-v-main/launchd-err.log
+```
+
+### Health check
+
+```bash
+curl -s http://127.0.0.1:3322/api/health
+curl -s http://127.0.0.1:3021/health
+curl -s http://127.0.0.1:8788/health
+curl -s -o /dev/null -w "%{http_code}\n" http://100.103.0.38:3322/
+```
+
+### Testy
+
+```bash
+cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
+pnpm run test:all
+node /Users/erikbabcan/aaa-terminalnexify2-with-v-main/scripts/test-stability-network.mjs
+```
+
+### Git sync + reštart
+
+```bash
+cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
+git pull fork main
+launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
+```
+
+### ENV edit
+
+```bash
+nano /Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.local
+launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
+```
+
+---
+
+## 15. ENV — Mistral kľúče (presné súbory)
+
+| Súbor | Účel |
+|-------|------|
+| `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.local` | **Hlavný** — Launch Agent + Next + dev-all |
+| `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/services/ai-proxy/.env` | Len pri ručnom `node services/ai-proxy/ai-proxy.mjs` |
+| `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.example` | Šablóna bez secretov |
+| `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.ci` | Fake — len GitHub CI, **nikdy lokálne** |
+| `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.local.bak.1780101747` | Záloha |
+
+Do `.env.local` pridaj / over:
+
+```bash
+AI_PROVIDER=mistral
+MISTRAL_API_KEY_1=tvoj-primary-kľúč
+MISTRAL_API_KEY_2=tvoj-backup-kľúč
+MISTRAL_MODEL=mistral-small-latest
+```
+
+Overenie (bez vypisovania kľúčov):
+
+```bash
+cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
+grep -E '^AI_PROVIDER=|^MISTRAL_' .env.local | cut -d= -f1
+curl -s http://127.0.0.1:8788/health
+```
+
+Očakávané: `"provider":"mistral"`.
+
+Test AI:
+
+```bash
+curl -s -X POST http://127.0.0.1:3322/api/ai \
+  -H "Content-Type: application/json" \
+  -d '{"question":"ping","provider":"mistral","model":"mistral-small-latest","context":{"workspaceRoot":"/Users/erikbabcan"}}'
+```
+
+---
+
+## 16. iPhone checklist + PWA + Face ID
+
+| Krok | Akcia |
+|------|-------|
+| 1 | Tailscale ON (Mac `100.103.0.38`, iPhone `100.103.153.97`) |
+| 2 | Safari → `http://100.103.0.38:3322` |
+| 3 | PIN **`2366`** |
+| 4 | PWA: Zdieľať → **Pridať na plochu** |
+| 5 | Swipe: Chat ↔ Terminal ↔ Files ↔ System |
+| 6 | Chat: text → AI chips; `$ cmd` → shell; tap chip → shell |
+| 7 | Face ID: lockscreen WebAuthn (na HTTP cez Tailscale môže byť limit) |
+
+PWA overenie na Macu:
+
+```bash
+curl -s http://127.0.0.1:3322/manifest.json | head -c 200
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3322/sw.js
+```
+
+---
+
+## 17. Čo funguje vs. stub
+
+| Funkcia | Stav |
+|---------|------|
+| Chat + Mistral AI | ✓ (MISTRAL_API_KEY_1 v `.env.local`) |
+| Shell `$` / `/` + tap-to-run + follow-up | ✓ |
+| Terminal, Files, System, Insolvency | ✓ |
+| PIN 2366, Tailscale lock (8.8.8.8 → 403) | ✓ |
+| PWA manifest + service worker | ✓ |
+| Export PDF/MD/JSON | ✗ stub |
+| Mikrofón / voice | ✗ stub (animácia) |
+| Gamma bez `GAMMA_API_KEY` | ✗ |
+| GitHub Models bez tokenu | ✗ |
+
+---
+
+## 18. Manuál v appke (tlačidlo)
+
+V UI headeri (záložka Chat) je cyan tlačidlo **Manuál** — otvorí bočný panel so všetkými sekciami:
+
+- Kde zadávaš príkazy
+- iPhone + PWA
+- ENV / Mistral cesty
+- macOS copy-paste príkazy
+- Čo funguje vs. stub
+- Nexify Operator v1–v4
+- Reštart: `launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`
+
+Súbor v kóde: `components/nexify-manual-sheet.tsx`  
+Obsah: `lib/operator/nexifyManualContent.ts`
+
+---
+
+*Nexify Terminal · private repo · main branch · 111+ automated tests*

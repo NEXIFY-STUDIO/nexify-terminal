@@ -38,7 +38,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 18 tests\n');
+console.log('📱 Nexify Operator UX — 19 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -148,7 +148,17 @@ test('18 — chat-area proactive follow-up after shell', () => {
   assert(src.includes('buildShellFollowUpQuestion'), 'missing follow-up prompt import');
 });
 
+test('19 — Manuál button a obsah v appke', () => {
+  const chat = fs.readFileSync(chatAreaPath, 'utf8');
+  const manual = fs.readFileSync(path.join(rootDir, 'components/nexify-manual-sheet.tsx'), 'utf8');
+  const content = fs.readFileSync(path.join(rootDir, 'lib/operator/nexifyManualContent.ts'), 'utf8');
+  assert(chat.includes('NexifyManualSheet'), 'missing Manuál button in chat-area');
+  assert(manual.includes('Nexify Manuál'), 'missing manual sheet title');
+  assert(content.includes('MISTRAL_API_KEY_1'), 'missing mistral env docs');
+  assert(content.includes('launchctl kickstart'), 'missing restart command');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/18 passed`);
+console.log(`Operator UX: ${passed}/19 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

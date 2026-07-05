@@ -19,7 +19,7 @@ const filesToTest = {
   nextConfig: path.join(rootDir, 'next.config.mjs'),
 };
 
-console.log('🔍 Running Master Integrity Test Suite (60 Assertions)...\n');
+console.log('🔍 Running Master Integrity Test Suite (61 Assertions)...\n');
 
 let failed = 0;
 let passed = 0;
@@ -56,7 +56,8 @@ const assertionsList = [
       { name: '7. Auto-scroll ref hook', pattern: /useRef</ },
       { name: '8. Lucide icon (Terminal)', pattern: /<Terminal/ },
       { name: '9. Tailwind bg-background', pattern: /bg-background/ },
-      { name: '10. API route fetch call', pattern: /fetch\(['"`]\/api\// }
+      { name: '10. API route fetch call', pattern: /fetch\(['"`]\/api\// },
+      { name: '10b. In-app Manuál button', pattern: /NexifyManualSheet/ }
     ]
   },
   {
@@ -176,11 +177,11 @@ assertionsList.forEach(group => {
 });
 
 console.log('\n==================================================');
-console.log(`Integrity Check Result: ${passed}/60 Passed`);
+console.log(`Integrity Check Result: ${passed}/61 Passed`);
 console.log('==================================================');
 
-if (failed === 0 && passed === 60) {
-  console.log('✅ ALL 60 INTEGRITY CHECKS PASSED');
+if (failed === 0 && passed === 61) {
+  console.log('✅ ALL 61 INTEGRITY CHECKS PASSED');
   process.exit(0);
 } else {
   console.error(`❌ ${failed} INTEGRITY CHECKS FAILED`);
