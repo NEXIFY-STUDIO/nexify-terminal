@@ -207,6 +207,9 @@ Každý riadok `$ ...` sa zobrazí ako samostatné tlačidlo.
 | `AI` | žiadny | AI proxy → Nexify Operator | `koľko RAM?` |
 | `$` | `$` | Shell na Macu | `$ top -l 1` |
 | `/` | `/` | Shell na Macu | `/ whoami` |
+| `clear` | presne `clear` | Vymaže SESSION pamäť + reštart UI | `clear` |
+
+Napíš **`clear`** samostatne (bez `$` ani `/`) v Chat inpute → vymaže sa chat história (`last_command`, `recent_output`, správy) a appka sa reštartuje. PIN zostane (lockscreen session).
 
 **Status strip** (pod headerom v Chate):
 
@@ -394,7 +397,7 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 18 persona + 19 UX = **113** |
+| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 19 persona + 22 UX = **116** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
 | `pnpm run test:nexify-persona` | Prompt pravidlá v1–v4 |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
@@ -616,4 +619,4 @@ Obsah: `lib/operator/nexifyManualContent.ts`
 
 ---
 
-*Nexify Terminal · private repo · main branch · Mac + Tailscale only · 113+ automated tests*
+*Nexify Terminal · private repo · main branch · Mac + Tailscale only · 116+ automated tests*

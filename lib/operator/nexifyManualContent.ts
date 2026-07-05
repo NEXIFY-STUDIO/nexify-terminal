@@ -40,6 +40,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "Záložka Terminal → priamy PTY (bez $ prefixu)",
       "macOS Terminál → launchctl, testy, údržba stacku",
       "Badge AI / $ / / vľavo od mikrofónu → prepína režim vstupu",
+      "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
     ],
   },
   {

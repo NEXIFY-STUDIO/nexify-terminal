@@ -15,6 +15,11 @@ import {
   getRecentOutputFromMessages,
 } from '../lib/operator/sessionContext.mjs';
 import { buildShellFollowUpQuestion } from '../lib/operator/followUpPrompt.mjs';
+import {
+  isClearSessionCommand,
+  clearNexifySessionMemory,
+  NEXIFY_MEMORY_STORAGE_KEYS,
+} from '../lib/operator/sessionReset.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -38,7 +43,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 19 tests\n');
+console.log('📱 Nexify Operator UX — 22 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -158,7 +163,40 @@ test('19 — Manuál button a obsah v appke', () => {
   assert(content.includes('launchctl kickstart'), 'missing restart command');
 });
 
+test('20 — isClearSessionCommand exact standalone match', () => {
+  assert(isClearSessionCommand('clear'), 'clear');
+  assert(isClearSessionCommand('  CLEAR  '), 'case insensitive');
+  assert(!isClearSessionCommand('$ clear'), 'no shell prefix');
+  assert(!isClearSessionCommand('/clear'), 'no slash prefix');
+  assert(!isClearSessionCommand('cleared'), 'no partial match');
+});
+
+test('21 — clearNexifySessionMemory wipes chat history key', () => {
+  const mock = {
+    store: { nexify_chat_history: '[]', nexify_authenticated: 'pin' },
+    getItem(key) {
+      return this.store[key] ?? null;
+    },
+    removeItem(key) {
+      delete this.store[key];
+    },
+  };
+  const result = clearNexifySessionMemory(mock);
+  assert(result.cleared.includes('nexify_chat_history'), 'history cleared');
+  assert(mock.getItem('nexify_chat_history') == null, 'history removed');
+  assert(mock.getItem('nexify_authenticated') === 'pin', 'auth kept');
+  assert(NEXIFY_MEMORY_STORAGE_KEYS.includes('nexify_chat_history'), 'key registered');
+});
+
+test('22 — chat-area wires clear session + app restart', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('isClearSessionCommand'), 'missing clear detector');
+  assert(src.includes('handleClearSession'), 'missing clear handler');
+  assert(src.includes('clearNexifySessionMemory'), 'missing memory wipe');
+  assert(src.includes('restartNexifyApp'), 'missing app restart');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/19 passed`);
+console.log(`Operator UX: ${passed}/22 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

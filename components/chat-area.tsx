@@ -33,6 +33,11 @@ import {
 } from "@/lib/operator/inputMode.mjs"
 import { buildSessionFields } from "@/lib/operator/sessionContext.mjs"
 import { buildShellFollowUpQuestion } from "@/lib/operator/followUpPrompt.mjs"
+import {
+  isClearSessionCommand,
+  clearNexifySessionMemory,
+  restartNexifyApp,
+} from "@/lib/operator/sessionReset.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -909,9 +914,30 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
+  const handleClearSession = () => {
+    triggerHaptic('heavy');
+    setInput("");
+    pendingShellFollowUpRef.current = null;
+    wasExecutingRef.current = false;
+    setIsExecutingCommand(false);
+    setMessages([]);
+
+    if (shellSessionId) {
+      fetch(`/api/shell?path=sessions/${shellSessionId}`, { method: 'DELETE' }).catch(() => {});
+    }
+
+    clearNexifySessionMemory();
+    restartNexifyApp();
+  };
+
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    if (isClearSessionCommand(trimmed)) {
+      handleClearSession();
+      return;
+    }
 
     triggerHaptic('medium');
     setInput("");
