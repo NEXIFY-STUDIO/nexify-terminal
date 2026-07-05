@@ -17,6 +17,7 @@ export const NEXIFY_PATHS = {
 export const NEXIFY_URLS = {
   iphoneUi: "http://100.103.0.38:3322",
   macLocalUi: "http://127.0.0.1:3322",
+  vercelUi: "https://aaa-terminalnexify2-with-v-main.vercel.app",
   healthUi: "http://127.0.0.1:3322/api/health",
   healthHack: "http://127.0.0.1:3021/health",
   healthAi: "http://127.0.0.1:8788/health",
@@ -96,6 +97,18 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "✗ Export PDF/MD/JSON — len UI",
       "✗ Mikrofón — len animácia, žiadny speech-to-text",
       "✗ Gamma/GitHub Models bez API kľúča",
+    ],
+  },
+  {
+    id: "vercel",
+    title: "Vercel vs. Mac (Tailscale)",
+    lines: [
+      `Primárny režim: ${NEXIFY_URLS.iphoneUi} — plný shell + AI`,
+      `Vercel UI only: ${NEXIFY_URLS.vercelUi} — bez Mac backendu`,
+      "Shell/AI na Verceli: 502/503 (127.0.0.1 nedosiahnuteľný z cloudu)",
+      `ENV šablóna: ${NEXIFY_PROJECT_ROOT}/vercel.env.example`,
+      `Sync: bash ${NEXIFY_PROJECT_ROOT}/scripts/sync-vercel-env.sh`,
+      "DISABLE_TAILSCALE_LOCKDOWN=true na Vercel Production",
     ],
   },
   {
