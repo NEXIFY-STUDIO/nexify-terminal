@@ -20,7 +20,8 @@
     "test:integrity-60": "node scripts/test-integrity-suite.mjs",
     "test:iphone17-300": "node scripts/test-iphone17-air-300.mjs",
     "test:iphone17-static": "node scripts/test-iphone17-air-300.mjs --static-only",
-    "test:iphone17-live": "playwright test -c scripts/iphone17-playwright/playwright.config.ts"
+    "test:iphone17-live": "playwright test -c scripts/iphone17-playwright/playwright.config.ts",
+    "test:lovable-editor-split": "node scripts/test-lovable-editor-split.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
