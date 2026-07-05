@@ -15,6 +15,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+export PATH="$ROOT_DIR/node_modules/.bin:${PATH:-/usr/bin:/bin}"
+
 # Load .env.local / .env if present (best-effort, ignore comments).
 for envfile in .env.local .env; do
   if [ -f "$envfile" ]; then
@@ -55,8 +57,17 @@ echo "[dev-all] starting AI proxy on :$AI_PROXY_PORT"
 node services/ai-proxy/ai-proxy.mjs &
 pids+=("$!")
 
-echo "[dev-all] starting Next UI on :$WEB_PORT"
-npx next dev -p ${WEB_PORT:-${NEXT_PORT:-3322}} &
+echo "[dev-all] starting Next UI on :$WEB_PORT (0.0.0.0)"
+next dev -H 0.0.0.0 -p "${WEB_PORT:-${NEXT_PORT:-3322}}" &
 pids+=("$!")
 
-wait
+echo "[dev-all] all services started (pids: ${pids[*]}), watching..."
+while true; do
+  for pid in "${pids[@]}"; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "[dev-all] process $pid died — exiting for launchd relaunch"
+      exit 1
+    fi
+  done
+  sleep 10
+done

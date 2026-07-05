@@ -4,9 +4,6 @@ import {
   ChevronDown,
   Settings,
   Upload,
-  Lightbulb,
-  FileText,
-  ImageIcon,
   Mic,
   ArrowUp,
   Paperclip,
@@ -734,6 +731,18 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
+  const buildOperatorContext = () => {
+    const lastCommandMsg = [...messages].reverse().find((m) => m.type === 'command');
+    const lastCommand = lastCommandMsg?.content?.replace(/^\$\s*/, '').trim() || null;
+    return {
+      workspaceRoot: '/Users/erikbabcan',
+      viewMode,
+      lastCommand,
+      stack: 'Nexify :3322 · hack-api :3021 · ai-proxy :8788',
+      access: 'Tailscale → domáci uzol (Mac)',
+    };
+  };
+
   const sendAiPrompt = async (promptText: string) => {
     // Add user prompt to message history
     setMessages(prev => [
@@ -755,7 +764,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         body: JSON.stringify({
           question: promptText,
           provider: activeModel.provider,
-          model: activeModel.model
+          model: activeModel.model,
+          context: buildOperatorContext(),
         })
       });
 
@@ -801,11 +811,6 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     } else {
       sendAiPrompt(trimmed);
     }
-  };
-
-  const handleQuickAction = (actionText: string) => {
-    triggerHaptic('light');
-    setInput(actionText);
   };
 
   // Group commands and outputs together
@@ -1314,46 +1319,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             </div>
           )
         ) : renderGroups.length === 0 || isIdle ? (
-          <div className="flex-1 w-full flex flex-col items-center justify-end pb-20 relative">
-            {/* Absolute Background Canvas */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
+          <div className="flex-1 w-full relative">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <ParticleOrb isTyping={isTyping} keystrokeTrigger={keystrokeTrigger} />
-            </div>
-
-            {/* Foreground elements */}
-            <div className="relative z-10 flex flex-col items-center justify-center pointer-events-auto">
-              {/* Title */}
-              <h1 className="text-2xl font-semibold text-foreground mb-4 text-center font-[var(--font-heading)] tracking-tight">
-                Ready to Create Something New?
-              </h1>
-
-              {/* Quick Actions */}
-              <div className="flex flex-col items-center gap-2 mb-4 w-full max-w-xs">
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("Create image of ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <ImageIcon className="w-3 h-3" />
-                  Create Image
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("Brainstorm ideas for ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <Lightbulb className="w-3 h-3" />
-                  Brainstorm
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("/make plan ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <FileText className="w-3 h-3" />
-                  Make a plan
-                </Button>
-              </div>
             </div>
           </div>
         ) : (
@@ -1597,8 +1565,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                     handleSend()
                   }
                 }}
-                placeholder="H4CK3D Anything ... (start with $ or / to run shell commands)"
-                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground text-base min-h-[44px] font-normal py-2"
+                aria-label="Správa"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground text-base min-h-[44px] font-normal py-2"
               />
 
               {/* Send Button (Right) */}

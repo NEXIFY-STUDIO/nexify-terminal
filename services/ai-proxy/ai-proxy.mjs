@@ -8,16 +8,41 @@ const DEFAULT_GITHUB_MODEL = 'openai/gpt-4.1-mini';
 const DEFAULT_MISTRAL_MODEL = 'mistral-small-latest';
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GAMMA_MODEL = 'gamma-4b4';
-const DEFAULT_SYSTEM_PROMPT = [
-  'You are the NEXIFY TECH CENTER assistant.',
-  'You MUST always communicate and answer EXCLUSIVELY in the Slovak language (slovenský jazyk).',
-  'You MUST listen to EVERY SINGLE WORD the user says and NEVER skip, ignore, or misinterpret anything.',
-  'You MUST NEVER generate nonsense, hallucinate, or make up information.',
-  'If you are unsure, ASK for clarification instead of guessing.',
-  'Answer as a concise, precise senior engineer with implementation-ready solutions.',
-  'Be direct, clear, and never add unnecessary words or fluff.',
-  'Every response must be useful, accurate, and follow the user instructions EXACTLY.',
-].join(' ');
+
+export const NEXIFY_OPERATOR_PROMPT = [
+  'Si Nexify — nie chatbot. Si rozhranie k Erikovmu Macu cez Tailscale.',
+  '',
+  'Identita:',
+  '- Si stručný operátor domáceho uzla, nie asistent z call centra.',
+  '- Nikdy nezačínaj „Ako vám môžem pomôcť?“ ani podobné frázy.',
+  '- Začni stavom zo SESSION: workspace, bežiace služby (live_stack), posledný príkaz (last_command).',
+  '',
+  'Správanie:',
+  '- Keď user píše text → navrhni shell príkaz ($ ...) alebo konkrétny kód.',
+  '- Keď user píše $ alebo / → neradíš; popíš čo príkaz vykoná a čo čakať v termináli.',
+  '- Predvolene navrhuj príkazy na jeden tap: každý príkaz na samostatnom riadku s prefixom $.',
+  '- Odpovedaj slovensky alebo anglicky podľa jazyka usera.',
+  '',
+  'Formát odpovede:',
+  'INTENT: jedna veta',
+  'ACTION: $ príkazy alebo kroky',
+  'RESULT: max 3 vety — čo user uvidí na domácom uzle',
+  '',
+  'Bez fluffu a halucinácií. Ak SESSION chýba, jedna krátka otázka — potom pokračuj.',
+].join('\n');
+
+const DEFAULT_SYSTEM_PROMPT = NEXIFY_OPERATOR_PROMPT;
+
+export function formatQuestionWithContext(question, context = {}) {
+  const lines = ['[SESSION]'];
+  if (context.workspaceRoot) lines.push(`workspace: ${context.workspaceRoot}`);
+  if (context.viewMode) lines.push(`view: ${context.viewMode}`);
+  if (context.lastCommand) lines.push(`last_command: ${context.lastCommand}`);
+  if (context.stack) lines.push(`live_stack: ${context.stack}`);
+  if (context.access) lines.push(`access: ${context.access}`);
+  lines.push('', '[USER]', question);
+  return lines.join('\n');
+}
 
 function normalizeProvider(provider = '') {
   const normalized = String(provider).trim().toLowerCase();
@@ -95,10 +120,13 @@ function extractAnswer(payload, provider) {
   return answer || null;
 }
 
-export function buildProviderRequest(question, config, apiKeyOverride) {
+export function buildProviderRequest(question, config, apiKeyOverride, context) {
+  const userContent = context && Object.keys(context).length > 0
+    ? formatQuestionWithContext(question, context)
+    : question;
   const messages = [
     { role: 'system', content: config.systemPrompt },
-    { role: 'user', content: question },
+    { role: 'user', content: userContent },
   ];
 
   if (config.provider === 'gemini') {
@@ -118,7 +146,7 @@ export function buildProviderRequest(question, config, apiKeyOverride) {
         },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: config.systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: question }] }],
+          contents: [{ role: 'user', parts: [{ text: userContent }] }],
           generationConfig: {
             temperature: config.temperature,
             maxOutputTokens: config.maxTokens,
@@ -245,6 +273,7 @@ export function createAiProxyApp({
 
     const requestedProvider = req.body?.provider;
     const requestedModel = req.body?.model;
+    const context = req.body?.context && typeof req.body.context === 'object' ? req.body.context : {};
     const activeConfig = {
       ...config,
       ...(requestedProvider ? { provider: normalizeProvider(requestedProvider) } : {}),
@@ -258,7 +287,7 @@ export function createAiProxyApp({
     let providerRequest;
     let mistralKeyUsed = activeConfig.mistralApiKey1 || activeConfig.mistralApiKey;
     try {
-      providerRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed);
+      providerRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed, context);
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -271,74 +300,67 @@ export function createAiProxyApp({
       fetchError = err;
     }
 
-    // Determine if we should attempt fallback key (either fetch failed or returned quota/auth error)
     const primaryFailed = fetchError || (upstream && (upstream.status === 429 || upstream.status === 401 || upstream.status === 403 || upstream.status === 502));
 
     if (activeConfig.provider === 'mistral' && primaryFailed && activeConfig.mistralApiKey2) {
       console.warn('[ai-proxy] Mistral Primary Key failed or quota exceeded. Trying backup Key...');
       mistralKeyUsed = activeConfig.mistralApiKey2;
       try {
-        const fallbackRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed);
+        const fallbackRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed, context);
         upstream = await fetchImpl(fallbackRequest.url, fallbackRequest.options);
-        fetchError = null; // Clear primary error if fallback fetch completed
+        fetchError = null;
       } catch (retryError) {
         console.error('[ai-proxy] Failed to fetch using backup Mistral key:', retryError.message);
-        fetchError = retryError; // Set error to fallback error
+        fetchError = retryError;
       }
     }
 
     if (fetchError) {
-      return res.status(502).json({
-        error: `Failed to reach ${activeConfig.provider}: ${fetchError.message}`,
-      });
+      return res.status(502).json({ error: `Upstream fetch failed: ${fetchError.message}` });
     }
 
+    if (!upstream.ok) {
+      const detail = await readProviderError(upstream);
+      return res.status(upstream.status).json({ error: detail || `Upstream returned ${upstream.status}` });
+    }
+
+    let payload;
     try {
-      if (upstream.status === 429) {
-        const retryAfter = upstream.headers.get('Retry-After');
-        if (retryAfter) res.setHeader('Retry-After', retryAfter);
-        return res.status(429).json({ error: `Provider rate limit hit for ${activeConfig.provider}.` });
-      }
-
-      if (!upstream.ok) {
-        const errorMessage = await readProviderError(upstream);
-        return res.status(502).json({
-          error: `Upstream ${activeConfig.provider} error (${upstream.status}): ${errorMessage}`,
-        });
-      }
-
-      const payload = await upstream.json();
-      const answer = extractAnswer(payload, activeConfig.provider);
-      if (!answer) {
-        return res.status(502).json({ error: `Invalid ${activeConfig.provider} response.` });
-      }
-
-      return res.json({
-        answer,
-        provider: activeConfig.provider,
-        model: providerRequest.model,
-      });
-    } catch (error) {
-      return res.status(502).json({
-        error: `Failed to process ${activeConfig.provider} response: ${error.message}`,
-      });
+      payload = await upstream.json();
+    } catch {
+      return res.status(502).json({ error: 'Upstream returned non-JSON response.' });
     }
+
+    const answer = extractAnswer(payload, activeConfig.provider);
+    if (!answer) {
+      return res.status(502).json({ error: 'No answer in upstream response.', raw: payload });
+    }
+
+    return res.json({
+      answer,
+      provider: activeConfig.provider,
+      model: getActiveModel(activeConfig),
+    });
   });
 
   return app;
 }
 
-export function startAiProxy(options = {}) {
+function startServer(options = {}) {
   const config = options.config || getAiProxyConfig();
-  const app = createAiProxyApp({ ...options, config });
-  return app.listen(config.port, config.host, () => {
-    console.log(`[nexify-ai-proxy] Listening on http://${config.host}:${config.port}`);
-    console.log(`[nexify-ai-proxy] Provider: ${config.provider}`);
+  const app = createAiProxyApp({ config, fetchImpl: options.fetchImpl });
+  const host = config.host;
+  const port = config.port;
+  return new Promise((resolve) => {
+    const server = app.listen(port, host, () => {
+      console.log(`[nexify-ai-proxy] Listening on http://${host}:${port}`);
+      console.log(`[nexify-ai-proxy] Provider: ${config.provider}`);
+      resolve(server);
+    });
   });
 }
 
-const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-
-if (isMainModule) {
-  startAiProxy();
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  startServer();
 }
