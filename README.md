@@ -12,7 +12,6 @@
 | **PIN (lockscreen)** | `2366` |
 | **Mac Tailscale IP** | `100.103.0.38` |
 | **iPhone Tailscale IP** | `100.103.153.97` |
-| **Vercel (UI only)** | `https://aaa-terminalnexify2-with-v-main.vercel.app` |
 
 ---
 
@@ -36,7 +35,6 @@
 16. [iPhone checklist + PWA + Face ID](#16-iphone-checklist--pwa--face-id)
 17. [Čo funguje vs. stub](#17-čo-funguje-vs-stub)
 18. [Manuál v appke (tlačidlo)](#18-manuál-v-appke-tlačidlo)
-19. [Vercel deploy vs. Mac (Tailscale)](#19-vercel-deploy-vs-mac-tailscale)
 
 ---
 
@@ -618,40 +616,4 @@ Obsah: `lib/operator/nexifyManualContent.ts`
 
 ---
 
-## 19. Vercel deploy vs. Mac (Tailscale)
-
-| Režim | URL | Shell + AI | Odporúčanie |
-|-------|-----|------------|-------------|
-| **Mac + Tailscale** | `http://100.103.0.38:3322` | ✓ plná funkcia | **Primárny** — iPhone PWA |
-| **Vercel Production** | `https://aaa-terminalnexify2-with-v-main.vercel.app` | ✗ UI len | Demo / health check |
-
-Vercel hostuje len Next.js frontend. Shell (`:3021`) a AI proxy (`:8788`) bežia na Macu — z Vercel cloudu na `127.0.0.1` nedosiahneš. Pre plný Nexify používaj Mac stack cez Tailscale.
-
-### 19.1 Vercel ENV premenné
-
-Šablóna (bez tajomstiev): `vercel.env.example`  
-Sync z Macu: `bash scripts/sync-vercel-env.sh` (číta `.env.local`, nikdy necommituj)
-
-| Premenná | Účel |
-|----------|------|
-| `NEXT_PUBLIC_PASSCODE` | PIN lockscreen (`2366`) |
-| `DISABLE_TAILSCALE_LOCKDOWN` | `true` — verejný Vercel bez Tailscale filtra |
-| `NEXTAUTH_SECRET` | Server auth |
-| `HACK_API_URL`, `AI_PROXY_URL` | Proxy ciele (na Verceli defaultne nedosiahnuteľné) |
-| `HACK_API_TOKEN`, `SHELL_TOKEN` | Server-side proxy tokeny |
-| `AI_PROVIDER`, `MISTRAL_API_KEY_*` | AI provider (ak ai-proxy beží dosiahnuteľne) |
-
-### 19.2 Deploy príkazy
-
-```bash
-cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-bash scripts/sync-vercel-env.sh    # jednorazovo alebo po zmene .env.local
-vercel deploy --prod --yes
-curl -s -o /dev/null -w "%{http_code}\n" https://aaa-terminalnexify2-with-v-main.vercel.app/api/health
-```
-
-Očakávané: HTTP `200` na `/` aj `/api/health`. Chat shell a `$` príkazy na Verceli vrátia `502`/`503` — to je očakávané bez Mac backendu.
-
----
-
-*Nexify Terminal · private repo · main branch · 113+ automated tests*
+*Nexify Terminal · private repo · main branch · Mac + Tailscale only · 113+ automated tests*

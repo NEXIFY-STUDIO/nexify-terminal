@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Analytics } from "@vercel/analytics/next"
 import { AuthGuard } from "@/components/auth-guard"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
@@ -67,7 +66,6 @@ export default function RootLayout({
           {children}
         </AuthGuard>
         <Toaster />
-        <Analytics />
         <script
           dangerouslySetInnerHTML={{
             __html: `
