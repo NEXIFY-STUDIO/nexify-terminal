@@ -37,7 +37,7 @@ export function validateEnv(): EnvConfig {
     }
   }
 
-  const nextAuthUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const nextAuthUrl = process.env.NEXTAUTH_URL || 'http://localhost:3322';
   const nextAuthSecret = process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production';
 
   // Determine secure cookies setting
@@ -104,7 +104,7 @@ export function isDevelopment(): boolean {
  * Gets the application URL
  */
 export function getAppUrl(): string {
-  return process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+  return process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3322';
 }
 
 /**

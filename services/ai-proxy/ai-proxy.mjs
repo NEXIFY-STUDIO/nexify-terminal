@@ -7,25 +7,68 @@ const DEFAULT_PROVIDER = 'github-models';
 const DEFAULT_GITHUB_MODEL = 'openai/gpt-4.1-mini';
 const DEFAULT_MISTRAL_MODEL = 'mistral-small-latest';
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
-const DEFAULT_SYSTEM_PROMPT = [
-  'You are the NEXIFY TECH CENTER assistant.',
-  'You MUST always communicate and answer in the Slovak language (slovenský jazyk).',
-  'Answer as a concise senior engineer.',
-  'Prefer practical, implementation-ready answers in Slovak.',
-  'If the user asks about commands, frameworks, or deployment, answer directly and clearly in Slovak.',
-].join(' ');
+const DEFAULT_GAMMA_MODEL = 'gamma-4b4';
+
+export const NEXIFY_OPERATOR_PROMPT = [
+  'Si Nexify — nie chatbot. Si rozhranie k Erikovmu Macu cez Tailscale (telefón → domáci uzol).',
+  '',
+  'Identita:',
+  '- Si stručný operátor domáceho uzla, nie asistent z call centra.',
+  '- Nikdy nezačínaj „Ako vám môžem pomôcť?“ ani podobné frázy.',
+  '- Začni stavom zo SESSION: workspace, view, live_stack, last_command, recent_output, failed_last, access.',
+  '',
+  'SESSION-aware:',
+  '- recent_output = posledný výstup terminálu (max 500 znakov). Prečítaj ho pred ACTION.',
+  '- failed_last: true → neopakuj last_command; navrhni opravu alebo diagnostiku (iný $ príkaz).',
+  '- failed_last: false a user žiada to isté → potvrď že príkaz už prebehol, ACTION nechaj prázdne.',
+  '',
+  'UI (tap-to-run):',
+  '- Každý riadok začínajúci $ sa v appke zobrazí ako tlačidlo — tap = príkaz beží na Macu.',
+  '- V ACTION píš príkazy ako samostatné riadky: $ <príkaz> (max 3 na odpoveď).',
+  '- Nepíš príkazy do bežného textu ani na jeden riadok oddelené čiarkou.',
+  '',
+  'Režimy inputu:',
+  '- Text bez prefixu → navrhni $ príkazy alebo krátky kód.',
+  '- User poslal $ alebo / → príkaz už beží; neradíš znova. Daj INTENT + RESULT, ACTION nechaj prázdne alebo len follow-up.',
+  '',
+  'Formát odpovede:',
+  'INTENT: jedna veta (stav + čo robíme)',
+  'ACTION:',
+  '$ prvý príkaz',
+  '$ druhý príkaz',
+  'RESULT: max 2 vety — čo user uvidí na Macu',
+  '',
+  'Jazyk: slovenčina alebo angličtina podľa usera. Bez fluffu. Žiadne halucinácie ciest mimo SESSION workspace.',
+].join('\n');
+
+const DEFAULT_SYSTEM_PROMPT = NEXIFY_OPERATOR_PROMPT;
+
+export function formatQuestionWithContext(question, context = {}) {
+  const lines = ['[SESSION]'];
+  if (context.workspaceRoot) lines.push(`workspace: ${context.workspaceRoot}`);
+  if (context.viewMode) lines.push(`view: ${context.viewMode}`);
+  if (context.lastCommand) lines.push(`last_command: ${context.lastCommand}`);
+  if (context.recentOutput) lines.push(`recent_output: ${context.recentOutput}`);
+  if (context.failedLast === true) lines.push('failed_last: true');
+  else if (context.failedLast === false) lines.push('failed_last: false');
+  if (context.stack) lines.push(`live_stack: ${context.stack}`);
+  if (context.access) lines.push(`access: ${context.access}`);
+  lines.push('', '[USER]', question);
+  return lines.join('\n');
+}
 
 function normalizeProvider(provider = '') {
   const normalized = String(provider).trim().toLowerCase();
   if (normalized === 'github' || normalized === 'github-models') return 'github-models';
   if (normalized === 'mistral' || normalized === 'mistral-api') return 'mistral';
   if (normalized === 'gemini' || normalized === 'google' || normalized === 'google-gemini') return 'gemini';
+  if (normalized === 'gamma' || normalized === 'gamma-4b4' || normalized === 'gamma4b4') return 'gamma';
   return DEFAULT_PROVIDER;
 }
 
 export function getAiProxyConfig(env = process.env) {
   return {
-    host: env.AI_PROXY_HOST || '127.0.0.1',
+    host: env.AI_PROXY_HOST || '0.0.0.0',
     port: Number(env.AI_PROXY_PORT || 8787),
     provider: normalizeProvider(env.AI_PROVIDER),
     allowedOrigin: env.AI_ALLOWED_ORIGIN || 'http://127.0.0.1:5173',
@@ -41,6 +84,9 @@ export function getAiProxyConfig(env = process.env) {
     mistralModel: env.MISTRAL_MODEL || DEFAULT_MISTRAL_MODEL,
     geminiApiKey: env.GEMINI_API_KEY || '',
     geminiModel: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+    gammaApiKey: env.GAMMA_API_KEY || '',
+    gammaModel: env.GAMMA_MODEL || DEFAULT_GAMMA_MODEL,
+    gammaEndpoint: env.GAMMA_ENDPOINT || 'https://api.gamma.ai/v1/chat/completions',
   };
 }
 
@@ -54,6 +100,7 @@ function resolveProviderOverride(config, requested) {
 function getActiveModel(config) {
   if (config.provider === 'mistral') return config.mistralModel;
   if (config.provider === 'gemini') return config.geminiModel;
+  if (config.provider === 'gamma') return config.gammaModel;
   return config.githubModel;
 }
 
@@ -81,14 +128,18 @@ function extractGeminiAnswer(payload) {
 
 function extractAnswer(payload, provider) {
   if (provider === 'gemini') return extractGeminiAnswer(payload);
+  if (provider === 'gamma') return parseResponseContent(payload?.choices?.[0]?.message?.content);
   const answer = parseResponseContent(payload?.choices?.[0]?.message?.content);
   return answer || null;
 }
 
-export function buildProviderRequest(question, config, apiKeyOverride) {
+export function buildProviderRequest(question, config, apiKeyOverride, context) {
+  const userContent = context && Object.keys(context).length > 0
+    ? formatQuestionWithContext(question, context)
+    : question;
   const messages = [
     { role: 'system', content: config.systemPrompt },
-    { role: 'user', content: question },
+    { role: 'user', content: userContent },
   ];
 
   if (config.provider === 'gemini') {
@@ -108,7 +159,7 @@ export function buildProviderRequest(question, config, apiKeyOverride) {
         },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: config.systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: question }] }],
+          contents: [{ role: 'user', parts: [{ text: userContent }] }],
           generationConfig: {
             temperature: config.temperature,
             maxOutputTokens: config.maxTokens,
@@ -135,6 +186,29 @@ export function buildProviderRequest(question, config, apiKeyOverride) {
         },
         body: JSON.stringify({
           model: config.mistralModel,
+          messages,
+          temperature: config.temperature,
+          max_tokens: config.maxTokens,
+        }),
+      },
+    };
+  }
+
+  if (config.provider === 'gamma') {
+    if (!config.gammaApiKey) {
+      throw new Error('Missing GAMMA_API_KEY for provider=gamma');
+    }
+    return {
+      url: config.gammaEndpoint,
+      model: config.gammaModel,
+      options: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.gammaApiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.gammaModel,
           messages,
           temperature: config.temperature,
           max_tokens: config.maxTokens,
@@ -196,7 +270,11 @@ export function createAiProxyApp({
   app.use(express.json({ limit: '16kb' }));
 
   app.get('/health', (_req, res) => {
-    const model = config.provider === 'mistral' ? config.mistralModel : config.githubModel;
+    let model;
+    if (config.provider === 'mistral') model = config.mistralModel;
+    else if (config.provider === 'gemini') model = config.geminiModel;
+    else if (config.provider === 'gamma') model = config.gammaModel;
+    else model = config.githubModel;
     res.json({ status: 'ok', provider: config.provider, model });
   });
 
@@ -208,6 +286,7 @@ export function createAiProxyApp({
 
     const requestedProvider = req.body?.provider;
     const requestedModel = req.body?.model;
+    const context = req.body?.context && typeof req.body.context === 'object' ? req.body.context : {};
     const activeConfig = {
       ...config,
       ...(requestedProvider ? { provider: normalizeProvider(requestedProvider) } : {}),
@@ -221,7 +300,7 @@ export function createAiProxyApp({
     let providerRequest;
     let mistralKeyUsed = activeConfig.mistralApiKey1 || activeConfig.mistralApiKey;
     try {
-      providerRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed);
+      providerRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed, context);
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -234,74 +313,67 @@ export function createAiProxyApp({
       fetchError = err;
     }
 
-    // Determine if we should attempt fallback key (either fetch failed or returned quota/auth error)
     const primaryFailed = fetchError || (upstream && (upstream.status === 429 || upstream.status === 401 || upstream.status === 403 || upstream.status === 502));
 
     if (activeConfig.provider === 'mistral' && primaryFailed && activeConfig.mistralApiKey2) {
       console.warn('[ai-proxy] Mistral Primary Key failed or quota exceeded. Trying backup Key...');
       mistralKeyUsed = activeConfig.mistralApiKey2;
       try {
-        const fallbackRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed);
+        const fallbackRequest = buildProviderRequest(question, activeConfig, mistralKeyUsed, context);
         upstream = await fetchImpl(fallbackRequest.url, fallbackRequest.options);
-        fetchError = null; // Clear primary error if fallback fetch completed
+        fetchError = null;
       } catch (retryError) {
         console.error('[ai-proxy] Failed to fetch using backup Mistral key:', retryError.message);
-        fetchError = retryError; // Set error to fallback error
+        fetchError = retryError;
       }
     }
 
     if (fetchError) {
-      return res.status(502).json({
-        error: `Failed to reach ${activeConfig.provider}: ${fetchError.message}`,
-      });
+      return res.status(502).json({ error: `Upstream fetch failed: ${fetchError.message}` });
     }
 
+    if (!upstream.ok) {
+      const detail = await readProviderError(upstream);
+      return res.status(upstream.status).json({ error: detail || `Upstream returned ${upstream.status}` });
+    }
+
+    let payload;
     try {
-      if (upstream.status === 429) {
-        const retryAfter = upstream.headers.get('Retry-After');
-        if (retryAfter) res.setHeader('Retry-After', retryAfter);
-        return res.status(429).json({ error: `Provider rate limit hit for ${activeConfig.provider}.` });
-      }
-
-      if (!upstream.ok) {
-        const errorMessage = await readProviderError(upstream);
-        return res.status(502).json({
-          error: `Upstream ${activeConfig.provider} error (${upstream.status}): ${errorMessage}`,
-        });
-      }
-
-      const payload = await upstream.json();
-      const answer = extractAnswer(payload, activeConfig.provider);
-      if (!answer) {
-        return res.status(502).json({ error: `Invalid ${activeConfig.provider} response.` });
-      }
-
-      return res.json({
-        answer,
-        provider: activeConfig.provider,
-        model: providerRequest.model,
-      });
-    } catch (error) {
-      return res.status(502).json({
-        error: `Failed to process ${activeConfig.provider} response: ${error.message}`,
-      });
+      payload = await upstream.json();
+    } catch {
+      return res.status(502).json({ error: 'Upstream returned non-JSON response.' });
     }
+
+    const answer = extractAnswer(payload, activeConfig.provider);
+    if (!answer) {
+      return res.status(502).json({ error: 'No answer in upstream response.', raw: payload });
+    }
+
+    return res.json({
+      answer,
+      provider: activeConfig.provider,
+      model: getActiveModel(activeConfig),
+    });
   });
 
   return app;
 }
 
-export function startAiProxy(options = {}) {
+function startServer(options = {}) {
   const config = options.config || getAiProxyConfig();
-  const app = createAiProxyApp({ ...options, config });
-  return app.listen(config.port, config.host, () => {
-    console.log(`[nexify-ai-proxy] Listening on http://${config.host}:${config.port}`);
-    console.log(`[nexify-ai-proxy] Provider: ${config.provider}`);
+  const app = createAiProxyApp({ config, fetchImpl: options.fetchImpl });
+  const host = config.host;
+  const port = config.port;
+  return new Promise((resolve) => {
+    const server = app.listen(port, host, () => {
+      console.log(`[nexify-ai-proxy] Listening on http://${host}:${port}`);
+      console.log(`[nexify-ai-proxy] Provider: ${config.provider}`);
+      resolve(server);
+    });
   });
 }
 
-const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-
-if (isMainModule) {
-  startAiProxy();
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  startServer();
 }

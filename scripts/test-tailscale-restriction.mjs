@@ -3,7 +3,7 @@ import dns from 'node:dns';
 console.log('🛡️ Running Tailscale Security Restriction & PIN Verification Tests...');
 
 let failed = false;
-const nextPort = '3002';
+const nextPort = '3322';
 const targetUrl = `http://localhost:${nextPort}/`;
 
 try {

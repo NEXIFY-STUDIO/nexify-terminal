@@ -4,17 +4,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "dev:web": "next dev -p 3000",
+    "prebuild": "npm run test:integrity-60",
+    "build": "next build --webpack",
+    "dev": "next dev -p 3322 -H 0.0.0.0",
+    "dev:web": "next dev -p 3322 -H 0.0.0.0",
     "dev:hack-api": "node services/hacking-api/server.js",
     "dev:ai-proxy": "node services/ai-proxy/ai-proxy.mjs",
     "dev:all": "bash scripts/dev-all.sh",
-    "lint": "eslint .",
-    "start": "next start",
+    "lint": "npx tsc --noEmit --skipLibCheck",
+    "start": "next start -p 3322 -H 0.0.0.0",
+    "prepare:prod": "node scripts/prepare-production.mjs",
     "verify:connector": "node scripts/verify-pandora-connector.mjs",
     "smoke:pandora": "node scripts/smoke-pandora-quality.mjs",
-    "test:security": "node scripts/test-security.mjs"
+    "test:security": "node scripts/test-security.mjs",
+    "test:integrity-60": "node scripts/test-integrity-suite.mjs",
+    "test:iphone17-300": "node scripts/test-iphone17-air-300.mjs",
+    "test:iphone17-static": "node scripts/test-iphone17-air-300.mjs --static-only",
+    "test:iphone17-live": "playwright test -c scripts/iphone17-playwright/playwright.config.ts",
+    "test:lovable-editor-split": "node scripts/test-lovable-editor-split.mjs",
+    "test:nexify-operator": "node scripts/test-nexify-operator.mjs",
+    "test:nexify-persona": "node scripts/test-nexify-persona.mjs",
+    "test:operator-ux": "node scripts/test-operator-ux.mjs",
+    "test:all": "node scripts/test-integrity-suite.mjs && node scripts/test-security.mjs && node scripts/test-pin.mjs && node scripts/test-nexify-operator.mjs && node scripts/test-nexify-persona.mjs && node scripts/test-operator-ux.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -87,6 +98,7 @@
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@playwright/test": "^1.51.1"
   }
 }

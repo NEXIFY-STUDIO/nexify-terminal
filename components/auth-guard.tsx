@@ -113,7 +113,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
       // 2. Prepare WebAuthn credentials retrieval request
       const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge: bufferFromBase64Url(options.challenge),
+        challenge: bufferFromBase64Url(options.challenge) as any,
         rpId: options.rp.id,
         userVerification: 'required', // Forces Face ID / Touch ID / Device passcode
         timeout: options.timeout,

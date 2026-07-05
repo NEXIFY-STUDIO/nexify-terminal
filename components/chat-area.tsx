@@ -4,9 +4,6 @@ import {
   ChevronDown,
   Settings,
   Upload,
-  Lightbulb,
-  FileText,
-  ImageIcon,
   Mic,
   ArrowUp,
   Paperclip,
@@ -23,7 +20,18 @@ import { ParticleOrb } from "@/components/particle-orb"
 import { TerminalView } from "@/components/terminal-view"
 import { FileExplorer } from "@/components/file-explorer"
 import { SystemMonitor } from "@/components/system-monitor"
+import { InsolvencyMonitor } from "@/components/insolvency-monitor"
+import { DualChatArea } from "@/components/dual-chat-area"
 import { useToast } from "@/hooks/use-toast"
+import { extractShellCommands, normalizeShellInput } from "@/lib/operator/shellCommands.mjs"
+import {
+  detectInputMode,
+  getInputPlaceholder,
+  getInputModeLabel,
+  cycleInputMode,
+  applyInputModePrefix,
+} from "@/lib/operator/inputMode.mjs"
+import { buildSessionFields } from "@/lib/operator/sessionContext.mjs"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -49,6 +57,35 @@ function cleanAnsi(text: string): string {
   // 5. Remove non-printable control characters, preserving newlines/carriage returns
   cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   return cleaned;
+}
+
+function ShellCommandChips({
+  commands,
+  onRun,
+  disabled,
+}: {
+  commands: string[];
+  onRun: (cmd: string) => void;
+  disabled?: boolean;
+}) {
+  if (!commands.length) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-3 pl-2">
+      {commands.map((cmd) => (
+        <button
+          key={cmd}
+          type="button"
+          disabled={disabled}
+          onClick={() => onRun(cmd)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-mono hover:bg-cyan-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <Terminal className="w-3 h-3 shrink-0" />
+          <span>$ {cmd}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean; toggleSidebar: () => void }) {
@@ -122,7 +159,13 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     role: 'user' | 'assistant' | 'system';
     content: string;
     type?: 'chat' | 'command' | 'output';
-  }>>([])
+  }>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexify_chat_history')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
   const [input, setInput] = useState("")
   const [keystrokeTrigger, setKeystrokeTrigger] = useState(0)
   const [isActivelyTyping, setIsActivelyTyping] = useState(false)
@@ -136,13 +179,40 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   }, [])
 
-  const [activeModel, setActiveModel] = useState({
-    label: "Mistral Small",
-    provider: "mistral",
-    model: "mistral-small-latest"
+  const [activeModel, setActiveModel] = useState<{
+    label: string;
+    provider: string;
+    model: string;
+  }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nexify_active_model')
+      return saved ? JSON.parse(saved) : {
+        label: "Mistral Small",
+        provider: "mistral",
+        model: "mistral-small-latest"
+      }
+    }
+    return {
+      label: "Mistral Small",
+      provider: "mistral",
+      model: "mistral-small-latest"
+    }
   })
+
+  // Persistence effects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexify_chat_history', JSON.stringify(messages))
+    }
+  }, [messages])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexify_active_model', JSON.stringify(activeModel))
+    }
+  }, [activeModel])
   const [shellSessionId, setShellSessionId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system'>('chat')
+  const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat'>('chat')
   const [isExecutingCommand, setIsExecutingCommand] = useState(false)
 
   // Custom Audio-Haptic vibration feedback helper for iOS
@@ -468,7 +538,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     };
   }, []);
 
-  const handleViewModeChange = (mode: 'chat' | 'terminal' | 'files' | 'system') => {
+  const handleViewModeChange = (mode: 'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat') => {
     triggerHaptic('light');
     setViewMode(mode);
   };
@@ -487,10 +557,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     const diffX = touch.clientX - touchStartRef.current.x;
     const diffY = touch.clientY - touchStartRef.current.y;
     
-    // Switch between panels (Chat <-> Terminal <-> Files <-> System) on clean swipe
+    // Switch between panels (Chat <-> Terminal <-> Files <-> System <-> Insolvency) on clean swipe
     if (Math.abs(diffX) > 100 && Math.abs(diffY) < 40) {
-      const modes: ('chat' | 'terminal' | 'files' | 'system')[] = ['chat', 'terminal', 'files', 'system'];
-      const currentIndex = modes.indexOf(viewMode);
+      const modes: ('chat' | 'terminal' | 'files' | 'system' | 'insolvency')[] = ['chat', 'terminal', 'files', 'system', 'insolvency'];
+      const currentIndex = modes.indexOf(viewMode as any);
       
       if (diffX > 0) {
         if (currentIndex > 0) {
@@ -569,6 +639,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   }, [messages, isExecutingCommand, input]);
 
   const isTyping = input.length > 0;
+  const inputMode = detectInputMode(input);
+  const sessionFields = buildSessionFields(messages);
+  const lastCommandPreview = sessionFields.lastCommand || '—';
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -699,6 +772,19 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
+  const buildOperatorContext = () => {
+    const session = buildSessionFields(messages);
+    return {
+      workspaceRoot: '/Users/erikbabcan',
+      viewMode,
+      lastCommand: session.lastCommand,
+      recentOutput: session.recentOutput,
+      failedLast: session.failedLast,
+      stack: 'Nexify :3322 · hack-api :3021 · ai-proxy :8788',
+      access: 'Tailscale → domáci uzol (Mac)',
+    };
+  };
+
   const sendAiPrompt = async (promptText: string) => {
     // Add user prompt to message history
     setMessages(prev => [
@@ -720,7 +806,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         body: JSON.stringify({
           question: promptText,
           provider: activeModel.provider,
-          model: activeModel.model
+          model: activeModel.model,
+          context: buildOperatorContext(),
         })
       });
 
@@ -761,16 +848,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     // Run as shell command if it starts with $ or /
     if (trimmed.startsWith('$') || trimmed.startsWith('/')) {
-      const commandToRun = trimmed.replace(/^[\$/]\s*/, "");
-      executeShellCommand(commandToRun);
+      executeShellCommand(normalizeShellInput(trimmed));
     } else {
       sendAiPrompt(trimmed);
     }
-  };
-
-  const handleQuickAction = (actionText: string) => {
-    triggerHaptic('light');
-    setInput(actionText);
   };
 
   // Group commands and outputs together
@@ -1090,6 +1171,26 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             >
               System
             </Button>
+            <Button
+              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
+                viewMode === 'insolvency'
+                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+              }`}
+              onClick={() => handleViewModeChange('insolvency')}
+            >
+              Insolvency
+            </Button>
+            <Button
+               className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
+                 viewMode === 'dual-chat'
+                   ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
+                   : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+               }`}
+               onClick={() => handleViewModeChange('dual-chat')}
+            >
+              Dual Coder
+            </Button>
           </div>
 
           {/* Row 1: Active Model Selector, Configuration, Export */}
@@ -1158,6 +1259,17 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
                   Advanced
                 </button>
+                <div className="h-px bg-border/20 my-1" />
+                <button
+                  className="dropdown-item text-[10px] text-destructive hover:bg-destructive/10 w-full text-left"
+                  onClick={() => {
+                    setMessages([])
+                    setConfigDropdownOpen(false)
+                    triggerHaptic('medium')
+                  }}
+                >
+                  Clear Chat
+                </button>
               </div>
             )}
           </div>
@@ -1221,11 +1333,36 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         </div>
       </header>
 
+      {viewMode === 'chat' && (
+        <div
+          className="operator-status relative z-10 px-4 py-1.5 border-b border-border/30 bg-background/20 backdrop-blur-sm font-mono text-[10px] text-muted-foreground truncate"
+          title={`workspace: /Users/erikbabcan · stack: Nexify :3322 · hack-api :3021 · ai-proxy :8788`}
+        >
+          <span className="text-cyan-400/90">{viewMode}</span>
+          <span className="mx-1.5 text-border">·</span>
+          <span>Nexify :3322 · :3021 · :8788</span>
+          <span className="mx-1.5 text-border">·</span>
+          <span className="text-zinc-400">last: {lastCommandPreview}</span>
+          {sessionFields.failedLast && (
+            <>
+              <span className="mx-1.5 text-border">·</span>
+              <span className="text-red-400/90">failed</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Main Content - flex layout with input at absolute bottom */}
       <div className="relative z-10 flex-1 flex flex-col items-center px-6 pt-4 pb-4 overflow-hidden w-full">
-        {viewMode === 'system' ? (
+        {viewMode === 'dual-chat' ? (
+          <DualChatArea />
+        ) : viewMode === 'system' ? (
           <div className="flex-1 w-full max-w-7xl h-full pb-4">
             <SystemMonitor />
+          </div>
+        ) : viewMode === 'insolvency' ? (
+          <div className="flex-1 w-full max-w-7xl h-full pb-4">
+            <InsolvencyMonitor />
           </div>
         ) : viewMode === 'files' ? (
           <div className="flex-1 w-full max-w-7xl h-full pb-4">
@@ -1242,46 +1379,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             </div>
           )
         ) : renderGroups.length === 0 || isIdle ? (
-          <div className="flex-1 w-full flex flex-col items-center justify-end pb-20 relative">
-            {/* Absolute Background Canvas */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 0 }}>
+          <div className="flex-1 w-full relative">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <ParticleOrb isTyping={isTyping} keystrokeTrigger={keystrokeTrigger} />
-            </div>
-
-            {/* Foreground elements */}
-            <div className="relative z-10 flex flex-col items-center justify-center pointer-events-auto">
-              {/* Title */}
-              <h1 className="text-2xl font-semibold text-foreground mb-4 text-center font-[var(--font-heading)] tracking-tight">
-                Ready to Create Something New?
-              </h1>
-
-              {/* Quick Actions */}
-              <div className="flex flex-col items-center gap-2 mb-4 w-full max-w-xs">
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("Create image of ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <ImageIcon className="w-3 h-3" />
-                  Create Image
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("Brainstorm ideas for ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <Lightbulb className="w-3 h-3" />
-                  Brainstorm
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleQuickAction("/make plan ")}
-                  className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm shadow-lg font-medium text-xs px-3 py-1 w-full"
-                >
-                  <FileText className="w-3 h-3" />
-                  Make a plan
-                </Button>
-              </div>
             </div>
           </div>
         ) : (
@@ -1352,9 +1452,19 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                             </div>
                           </div>
                           {isExpanded && (
-                            <div className="text-[var(--text-primary)] text-sm leading-relaxed whitespace-pre-wrap pl-2 mb-2">
-                              {group.content}
-                            </div>
+                            <>
+                              <div className="text-[var(--text-primary)] text-sm leading-relaxed whitespace-pre-wrap pl-2 mb-2">
+                                {group.content}
+                              </div>
+                              <ShellCommandChips
+                                commands={extractShellCommands(group.content)}
+                                disabled={isExecutingCommand}
+                                onRun={(cmd) => {
+                                  triggerHaptic('success');
+                                  executeShellCommand(cmd);
+                                }}
+                              />
+                            </>
                           )}
                         </div>
                       </div>
@@ -1382,10 +1492,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                       </div>
                       
                       {isExpanded && (
-                        <div className="terminal-box" data-copyable-text={cleanAnsi(group.output)}>
+                        <div className="terminal-box" data-copyable-text={cleanAnsi(group.output || '')}>
                           <div className="terminal-header">Terminal (local)</div>
                           <div className="terminal-content">
-                            {cleanAnsi(group.output)}
+                            {cleanAnsi(group.output || '')}
                             {group.isExecuting && <span className="cursor"></span>}
                           </div>
                         </div>
@@ -1402,7 +1512,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         )}
 
         {/* Input Area - positioned at absolute bottom with safe area offset + 12px padding */}
-        {viewMode !== 'terminal' && (
+        {viewMode !== 'terminal' && viewMode !== 'dual-chat' && (
           <div className="w-full max-w-4xl mt-auto mb-0 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
             {isRecording && (
               <div className="mb-3 input-3d bg-gradient-to-r from-black/90 via-black/95 to-black/90 backdrop-blur-xl rounded-full border border-border/50 px-6 py-3 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
@@ -1494,6 +1604,21 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 N
               </Button>
 
+              {/* Input mode: AI / $ / / */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  const next = cycleInputMode(inputMode);
+                  setInput(applyInputModePrefix(input, next));
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                }}
+                className="btn-3d h-9 min-w-9 px-2 rounded-full bg-secondary/50 border border-border/40 text-[11px] font-mono font-semibold text-cyan-400 shrink-0 hover:bg-secondary/70"
+                title="Prepni režim: AI → $ → /"
+              >
+                {getInputModeLabel(inputMode)}
+              </button>
+
               {/* Microphone Button */}
               <Button
                 variant="ghost"
@@ -1508,6 +1633,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <textarea
                 ref={textareaRef}
                 value={input}
+                placeholder={getInputPlaceholder(inputMode)}
                 onChange={(e) => {
                   setInput(e.target.value)
                   setKeystrokeTrigger(prev => prev + 1)
@@ -1525,8 +1651,8 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                     handleSend()
                   }
                 }}
-                placeholder="H4CK3D Anything ... (start with $ or / to run shell commands)"
-                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground text-base min-h-[44px] font-normal py-2"
+                aria-label="Správa"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground text-base min-h-[44px] font-normal py-2"
               />
 
               {/* Send Button (Right) */}

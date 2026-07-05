@@ -182,8 +182,8 @@ export function supportsSecureCookies(): boolean {
   }
 
   // Server-side: check environment variable
-  const protocol = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || '';
-  return protocol.startsWith('https') || protocol.includes('localhost');
+  const protocol = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  return protocol.startsWith('https') || protocol.includes('localhost') || protocol.includes('100.') || protocol.includes('fd7a:115c:a1e0:');
 }
 
 /**
