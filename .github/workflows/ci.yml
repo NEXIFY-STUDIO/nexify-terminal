@@ -26,5 +26,15 @@ jobs:
           npm install --prefix services/ai-proxy --ignore-scripts
       - name: Typecheck
         run: pnpm run lint
+      - name: Start AI proxy (integration smoke)
+        run: |
+          node services/ai-proxy/ai-proxy.mjs &
+          sleep 2
+        env:
+          AI_PROXY_PORT: 8788
+          AI_PROVIDER: mistral
+          MISTRAL_API_KEY: ci-smoke-placeholder
       - name: Test suite
         run: pnpm run test:all
+        env:
+          AI_PROXY_PORT: 8788
