@@ -55,7 +55,7 @@ function normalizeProvider(provider = '') {
 
 export function getAiProxyConfig(env = process.env) {
   return {
-    host: env.AI_PROXY_HOST || '127.0.0.1',
+    host: env.AI_PROXY_HOST || '0.0.0.0',
     port: Number(env.AI_PROXY_PORT || 8787),
     provider: normalizeProvider(env.AI_PROVIDER),
     allowedOrigin: env.AI_ALLOWED_ORIGIN || 'http://127.0.0.1:5173',

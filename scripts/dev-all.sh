@@ -29,6 +29,7 @@ done
 
 export PORT="${PORT:-3021}"
 export AI_PROXY_PORT="${AI_PROXY_PORT:-8788}"
+export AI_PROXY_HOST="${AI_PROXY_HOST:-0.0.0.0}"
 export WEB_PORT="${WEB_PORT:-3322}"
 
 echo "[dev-all] cleaning up any existing processes on ports $PORT, $AI_PROXY_PORT, $WEB_PORT..."
