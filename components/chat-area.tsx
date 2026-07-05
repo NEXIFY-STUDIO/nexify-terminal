@@ -23,6 +23,14 @@ import { SystemMonitor } from "@/components/system-monitor"
 import { InsolvencyMonitor } from "@/components/insolvency-monitor"
 import { DualChatArea } from "@/components/dual-chat-area"
 import { useToast } from "@/hooks/use-toast"
+import { extractShellCommands, normalizeShellInput } from "@/lib/operator/shellCommands.mjs"
+import {
+  detectInputMode,
+  getInputPlaceholder,
+  getInputModeLabel,
+  cycleInputMode,
+  applyInputModePrefix,
+} from "@/lib/operator/inputMode.mjs"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
@@ -48,6 +56,35 @@ function cleanAnsi(text: string): string {
   // 5. Remove non-printable control characters, preserving newlines/carriage returns
   cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   return cleaned;
+}
+
+function ShellCommandChips({
+  commands,
+  onRun,
+  disabled,
+}: {
+  commands: string[];
+  onRun: (cmd: string) => void;
+  disabled?: boolean;
+}) {
+  if (!commands.length) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 mt-3 pl-2">
+      {commands.map((cmd) => (
+        <button
+          key={cmd}
+          type="button"
+          disabled={disabled}
+          onClick={() => onRun(cmd)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-mono hover:bg-cyan-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <Terminal className="w-3 h-3 shrink-0" />
+          <span>$ {cmd}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean; toggleSidebar: () => void }) {
@@ -601,6 +638,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   }, [messages, isExecutingCommand, input]);
 
   const isTyping = input.length > 0;
+  const inputMode = detectInputMode(input);
+  const lastCommandPreview =
+    [...messages].reverse().find((m) => m.type === 'command')?.content?.replace(/^\$\s*/, '').trim() || '—';
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -806,8 +846,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     // Run as shell command if it starts with $ or /
     if (trimmed.startsWith('$') || trimmed.startsWith('/')) {
-      const commandToRun = trimmed.replace(/^[\$/]\s*/, "");
-      executeShellCommand(commandToRun);
+      executeShellCommand(normalizeShellInput(trimmed));
     } else {
       sendAiPrompt(trimmed);
     }
@@ -1292,6 +1331,19 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         </div>
       </header>
 
+      {viewMode === 'chat' && (
+        <div
+          className="operator-status relative z-10 px-4 py-1.5 border-b border-border/30 bg-background/20 backdrop-blur-sm font-mono text-[10px] text-muted-foreground truncate"
+          title={`workspace: /Users/erikbabcan · stack: Nexify :3322 · hack-api :3021 · ai-proxy :8788`}
+        >
+          <span className="text-cyan-400/90">{viewMode}</span>
+          <span className="mx-1.5 text-border">·</span>
+          <span>Nexify :3322 · :3021 · :8788</span>
+          <span className="mx-1.5 text-border">·</span>
+          <span className="text-zinc-400">last: {lastCommandPreview}</span>
+        </div>
+      )}
+
       {/* Main Content - flex layout with input at absolute bottom */}
       <div className="relative z-10 flex-1 flex flex-col items-center px-6 pt-4 pb-4 overflow-hidden w-full">
         {viewMode === 'dual-chat' ? (
@@ -1392,9 +1444,19 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                             </div>
                           </div>
                           {isExpanded && (
-                            <div className="text-[var(--text-primary)] text-sm leading-relaxed whitespace-pre-wrap pl-2 mb-2">
-                              {group.content}
-                            </div>
+                            <>
+                              <div className="text-[var(--text-primary)] text-sm leading-relaxed whitespace-pre-wrap pl-2 mb-2">
+                                {group.content}
+                              </div>
+                              <ShellCommandChips
+                                commands={extractShellCommands(group.content)}
+                                disabled={isExecutingCommand}
+                                onRun={(cmd) => {
+                                  triggerHaptic('success');
+                                  executeShellCommand(cmd);
+                                }}
+                              />
+                            </>
                           )}
                         </div>
                       </div>
@@ -1534,6 +1596,21 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 N
               </Button>
 
+              {/* Input mode: AI / $ / / */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('light');
+                  const next = cycleInputMode(inputMode);
+                  setInput(applyInputModePrefix(input, next));
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                }}
+                className="btn-3d h-9 min-w-9 px-2 rounded-full bg-secondary/50 border border-border/40 text-[11px] font-mono font-semibold text-cyan-400 shrink-0 hover:bg-secondary/70"
+                title="Prepni režim: AI → $ → /"
+              >
+                {getInputModeLabel(inputMode)}
+              </button>
+
               {/* Microphone Button */}
               <Button
                 variant="ghost"
@@ -1548,6 +1625,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <textarea
                 ref={textareaRef}
                 value={input}
+                placeholder={getInputPlaceholder(inputMode)}
                 onChange={(e) => {
                   setInput(e.target.value)
                   setKeystrokeTrigger(prev => prev + 1)
