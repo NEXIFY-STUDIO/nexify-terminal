@@ -1,5 +1,5 @@
 /**
- * Security Middleware for Next.js
+ * Security Proxy for Next.js
  * Applies security headers, enforces HTTPS, and implements rate limiting
  */
 
@@ -51,10 +51,10 @@ function getRateLimitForPath(pathname: string): { max: number; window: number } 
 }
 
 /**
- * Main middleware function
+ * Main proxy function
  * Applies security headers and enforces security policies
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   let normalizedIp = '127.0.0.1';
 
@@ -135,8 +135,6 @@ export function middleware(request: NextRequest) {
       headers: Object.fromEntries(request.headers.entries()),
     });
 
-    console.log(`[MIDDLEWARE] API Request: ${pathname}, Client IP: ${clientIp}, Private: ${isPrivateIp(clientIp)}, RATE_LIMIT_CONFIG.enabled: ${RATE_LIMIT_CONFIG.enabled}`);
-
     // Skip rate limiting for private IPs (localhost, internal networks)
     if (!RATE_LIMIT_CONFIG.excludePrivateIps || !isPrivateIp(clientIp)) {
       const limit = apiRateLimiter.check(clientIp);
@@ -171,7 +169,7 @@ export function middleware(request: NextRequest) {
 }
 
 /**
- * Configure which routes use middleware
+ * Configure which routes use the proxy
  */
 export const config = {
   matcher: [

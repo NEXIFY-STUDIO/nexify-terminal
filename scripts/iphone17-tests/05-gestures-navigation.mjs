@@ -69,7 +69,7 @@ const tests = [
     const mode = 'chat';
     return mode === 'chat';
   }),
-  ...patternTests(140, 'middleware.ts', 'Tailscale in gestures module', [
+  ...patternTests(140, 'proxy.ts', 'Tailscale in proxy module', [
     { name: 'TAILSCALE_ALLOWED_IP env', pattern: /TAILSCALE_ALLOWED_IP/ },
     { name: '100.103.153.97 default', pattern: /100\.103\.153\.97/ },
     { name: 'fd7a IPv6 tailscale', pattern: /fd7a:115c:a1e0/ },

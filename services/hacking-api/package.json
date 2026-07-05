@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "postinstall": "node -e \"const fs=require('fs');const p=require('path');const dirs=['darwin-arm64','darwin-x64','linux-x64','linux-arm64'];for(const d of dirs){const f=p.join('node_modules','node-pty','prebuilds',d,'spawn-helper');try{fs.chmodSync(f,0o755);console.log('chmod +x',f);}catch(e){if(e.code!=='ENOENT')console.warn(e.message);}}\""
+    "postinstall": "node scripts/chmod-node-pty.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

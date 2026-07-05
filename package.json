@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "npm run test:integrity-60",
+    "prebuild": "node scripts/test-integrity-suite.mjs",
     "build": "next build --webpack",
     "dev": "next dev -p 3322 -H 0.0.0.0",
     "dev:web": "next dev -p 3322 -H 0.0.0.0",

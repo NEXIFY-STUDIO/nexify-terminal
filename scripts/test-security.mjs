@@ -64,32 +64,32 @@ function checkEnv() {
   }
 }
 
-// 2. Middleware Security Configuration Audit
-function checkMiddleware() {
-  console.log('\n🛡️ Auditing Middleware Security Headers & Rate Limiting...');
-  const middlewarePath = path.join(rootDir, 'middleware.ts');
-  if (!fs.existsSync(middlewarePath)) {
-    console.error('❌ middleware.ts is missing!');
+// 2. Proxy Security Configuration Audit
+function checkProxy() {
+  console.log('\n🛡️ Auditing Proxy Security Headers & Rate Limiting...');
+  const proxyPath = path.join(rootDir, 'proxy.ts');
+  if (!fs.existsSync(proxyPath)) {
+    console.error('❌ proxy.ts is missing!');
     failed = true;
     return;
   }
 
-  const content = fs.readFileSync(middlewarePath, 'utf8');
+  const content = fs.readFileSync(proxyPath, 'utf8');
 
   // Verify rate limiter usage
   if (!content.includes('apiRateLimiter.check')) {
-    console.error('❌ Rate limiter (apiRateLimiter.check) is not active in middleware.ts');
+    console.error('❌ Rate limiter (apiRateLimiter.check) is not active in proxy.ts');
     failed = true;
   } else {
-    console.log('✅ API Rate Limiting is active in middleware');
+    console.log('✅ API Rate Limiting is active in proxy');
   }
 
   // Verify security headers mapping
   if (!content.includes('getSecurityHeaders')) {
-    console.error('❌ getSecurityHeaders is not active in middleware.ts');
+    console.error('❌ getSecurityHeaders is not active in proxy.ts');
     failed = true;
   } else {
-    console.log('✅ Security Headers (HSTS, CSP, X-Frame-Options) are active in middleware');
+    console.log('✅ Security Headers (HSTS, CSP, X-Frame-Options) are active in proxy');
   }
 }
 
@@ -147,7 +147,7 @@ function runRegexTests() {
 
 // Execute checks
 checkEnv();
-checkMiddleware();
+checkProxy();
 runRegexTests();
 
 console.log('\n==================================================');

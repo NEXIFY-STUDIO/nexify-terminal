@@ -12,7 +12,7 @@ const filesToTest = {
   layout: path.join(rootDir, 'app/layout.tsx'),
   apiFiles: path.join(rootDir, 'app/api/files/route.ts'),
   apiAuthChallenge: path.join(rootDir, 'app/api/auth/challenge/route.ts'),
-  middleware: path.join(rootDir, 'middleware.ts'),
+  proxy: path.join(rootDir, 'proxy.ts'),
   cookieSecurity: path.join(rootDir, 'lib/security/cookieSecurity.ts'),
   rateLimiter: path.join(rootDir, 'lib/security/rateLimiter.ts'),
   packageJson: path.join(rootDir, 'package.json'),
@@ -121,10 +121,10 @@ const assertionsList = [
     ]
   },
   {
-    target: 'middleware',
-    path: filesToTest.middleware,
+    target: 'proxy',
+    path: filesToTest.proxy,
     assertions: [
-      { name: '41. Middleware function export', pattern: /export\s+function\s+middleware/ },
+      { name: '41. Proxy function export', pattern: /export\s+function\s+proxy/ },
       { name: '42. NextResponse.next call', pattern: /NextResponse\.next\(\)/ },
       { name: '43. Tailscale lockdown logic', pattern: /tailscaleAllowedIp/i },
       { name: '44. Tailscale IP auto-allow prefix (100.)', pattern: /100\./ },
@@ -133,7 +133,7 @@ const assertionsList = [
       { name: '47. X-Content-Type-Options config', pattern: /X-Content-Type-Options/ },
       { name: '48. API Rate Limiter integration', pattern: /apiRateLimiter/ },
       { name: '49. Rate Limit Headers', pattern: /X-RateLimit-/ },
-      { name: '50. Middleware config matcher', pattern: /export\s+const\s+config\s*=\s*\{\s*matcher/ }
+      { name: '50. Proxy config matcher', pattern: /export\s+const\s+config\s*=\s*\{\s*matcher/ }
     ]
   },
   {
