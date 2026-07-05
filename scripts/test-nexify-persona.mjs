@@ -23,7 +23,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('🎭 Nexify Persona — 10 tests\n');
+console.log('🎭 Nexify Persona — 13 tests\n');
 
 await run('01 — Si Nexify, nie chatbot', () => {
   assert(prompt.includes('Si Nexify — nie chatbot'), 'missing core identity');
@@ -41,13 +41,13 @@ await run('03 — začína stavom zo SESSION', () => {
 });
 
 await run('04 — text → shell alebo kód', () => {
-  assert(prompt.includes('navrhni shell príkaz'), 'missing shell suggestion rule');
-  assert(prompt.includes('konkrétny kód'), 'missing code suggestion rule');
+  assert(prompt.includes('navrhni $ príkazy'), 'missing shell suggestion rule');
+  assert(prompt.includes('krátky kód'), 'missing code suggestion rule');
 });
 
 await run('05 — $ alebo / → vykonávanie, nie rady', () => {
-  assert(prompt.includes('Keď user píše $ alebo /'), 'missing shell trigger');
-  assert(prompt.includes('neradíš'), 'missing no-advice rule for shell');
+  assert(prompt.includes('User poslal $ alebo /'), 'missing shell trigger');
+  assert(prompt.includes('neradíš znova'), 'missing no-advice rule for shell');
 });
 
 await run('06 — tón stručný operátor', () => {
@@ -82,7 +82,23 @@ await run('10 — žiadna stará TECH CENTER persona', () => {
   assert(!prompt.includes('EXCLUSIVELY in the Slovak'), 'legacy language lock leaked');
 });
 
+await run('11 — tap-to-run UI pravidlá', () => {
+  assert(prompt.includes('UI (tap-to-run)'), 'missing tap-to-run section');
+  assert(prompt.includes('tlačidlo'), 'missing button rule');
+  assert(prompt.includes('max 3'), 'missing max commands rule');
+});
+
+await run('12 — ACTION ako samostatné $ riadky', () => {
+  assert(prompt.includes('samostatné riadky'), 'missing per-line ACTION rule');
+  assert(prompt.includes('$ prvý príkaz'), 'missing ACTION example');
+});
+
+await run('13 — $ už beží → bez nového ACTION', () => {
+  assert(prompt.includes('príkaz už beží'), 'missing execute-mode rule');
+  assert(prompt.includes('INTENT + RESULT'), 'missing INTENT+RESULT for shell input');
+});
+
 console.log('\n==================================================');
-console.log(`Nexify Persona: ${passed}/10 passed`);
+console.log(`Nexify Persona: ${passed}/13 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

@@ -64,7 +64,10 @@ test('05 — prompt defines INTENT / ACTION / RESULT format', () => {
 });
 
 test('06 — prompt requires $ command prefix', () => {
-  assert(defaultPrompt.includes('prefixom $') || defaultPrompt.includes('prefix $'), 'missing $ prefix rule');
+  assert(
+    defaultPrompt.includes('$ <príkaz>') || defaultPrompt.includes('$ prvý príkaz'),
+    'missing $ prefix rule',
+  );
 });
 
 test('07 — prompt bans generic corporate opener', () => {
