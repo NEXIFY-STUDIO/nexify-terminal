@@ -146,6 +146,7 @@ Toto je najdôležitejšia časť manuálu. Nexify má **tri miesta**, kam môž
 | `/ ls -la` | Rovnako ako `$` — spustí sa v shelli na Macu. |
 | `Enter` | Odošle správu (bez `Shift+Enter` = jeden riadok). |
 | `Shift+Enter` | Nový riadok v inpute. |
+| Mikrofón (drž) | Speech-to-text do inputu; potom `Enter` (nie auto-send). Jazyk: sk-SK / en-US. |
 
 **Badge režimu** (cyan tlačidlo `AI` / `$` / `/` vľavo od mikrofónu):
 
@@ -338,7 +339,7 @@ tailscale status
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-pnpm run test:all      # 124 testov
+pnpm run test:all      # 133 testov
 pnpm run lint          # TypeScript check
 node scripts/test-stability-network.mjs   # sieť + launchd soak
 ```
@@ -403,7 +404,7 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 28 UX = **124** |
+| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 37 UX = **133** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
 | `pnpm run test:nexify-persona` | Prompt pravidlá v1–v7 |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
@@ -604,7 +605,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3322/sw.js
 | PIN 2366, Tailscale lock (8.8.8.8 → 403) | ✓ |
 | PWA manifest + service worker | ✓ |
 | Export PDF/MD/JSON | ✗ stub |
-| Mikrofón / voice | ✗ stub (animácia) |
+| Mikrofón / voice | ✓ press-and-hold (webkitSpeechRecognition, sk-SK / en-US) |
 | Gamma bez `GAMMA_API_KEY` | ✗ |
 | GitHub Models bez tokenu | ✗ |
 
@@ -619,7 +620,7 @@ V UI headeri (záložka Chat) je cyan tlačidlo **Manuál** — otvorí bočný 
 - ENV / Mistral cesty
 - macOS copy-paste príkazy
 - Čo funguje vs. stub
-- Nexify Operator v1–v7 (help, status, clear)
+- Nexify Operator v1–v9 (help, status, clear, voice)
 - Reštart: `launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`
 
 Súbor v kóde: `components/nexify-manual-sheet.tsx`  

@@ -44,6 +44,12 @@ import {
   formatNexifyStatusReport,
 } from "@/lib/operator/sessionStatus.mjs"
 import { isHelpCommand, formatNexifyHelpReport } from "@/lib/operator/sessionHelp.mjs"
+import {
+  detectVoiceSupport,
+  resolveSpeechLanguage,
+  createVoiceSession,
+  VOICE_UNAVAILABLE_MESSAGE,
+} from "@/lib/operator/voiceInput.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -138,6 +144,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   }, [contextMenu])
 
   const [isRecording, setIsRecording] = useState(false)
+  const voiceSessionRef = useRef<ReturnType<typeof createVoiceSession> | null>(null)
+  const voiceCancelledRef = useRef(false)
+  const voiceHoldRef = useRef(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [configDropdownOpen, setConfigDropdownOpen] = useState(false)
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false)
@@ -281,6 +290,114 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       console.warn('Haptic trigger skipped:', e);
     }
   };
+
+  const showVoiceUnavailableToast = () => {
+    triggerHaptic('error');
+    toast({
+      title: VOICE_UNAVAILABLE_MESSAGE,
+      variant: 'destructive',
+      duration: 3000,
+    });
+  };
+
+  const insertVoiceTranscript = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setInput((prev) => {
+      const base = prev.trimEnd();
+      return base ? `${base} ${trimmed}` : trimmed;
+    });
+    setKeystrokeTrigger((prev) => prev + 1);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  const stopVoiceInput = (cancel = false) => {
+    voiceHoldRef.current = false;
+    if (cancel) voiceCancelledRef.current = true;
+    const session = voiceSessionRef.current;
+    if (!session) {
+      setIsRecording(false);
+      return;
+    }
+    try {
+      if (cancel) session.abort();
+      else session.stop();
+    } catch {
+      setIsRecording(false);
+      voiceSessionRef.current = null;
+    }
+  };
+
+  const startVoiceInput = () => {
+    if (!detectVoiceSupport()) {
+      showVoiceUnavailableToast();
+      return;
+    }
+    if (voiceSessionRef.current) return;
+
+    voiceCancelledRef.current = false;
+    voiceHoldRef.current = true;
+    triggerHaptic('light');
+    setIsRecording(true);
+
+    const session = createVoiceSession({
+      language: resolveSpeechLanguage(navigator.language),
+      onError: () => {
+        if (!voiceCancelledRef.current) showVoiceUnavailableToast();
+        voiceSessionRef.current = null;
+        setIsRecording(false);
+      },
+      onEnd: (finalText) => {
+        voiceSessionRef.current = null;
+        setIsRecording(false);
+        if (!voiceCancelledRef.current) insertVoiceTranscript(finalText);
+        voiceCancelledRef.current = false;
+      },
+    });
+
+    if (!session) {
+      showVoiceUnavailableToast();
+      setIsRecording(false);
+      return;
+    }
+
+    voiceSessionRef.current = session;
+    try {
+      session.start();
+    } catch {
+      voiceSessionRef.current = null;
+      showVoiceUnavailableToast();
+      setIsRecording(false);
+    }
+  };
+
+  const handleMicPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    startVoiceInput();
+  };
+
+  const handleMicPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!voiceHoldRef.current && !voiceSessionRef.current) return;
+    e.preventDefault();
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    stopVoiceInput(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (voiceSessionRef.current) {
+        try {
+          voiceSessionRef.current.abort();
+        } catch {
+          // ignore cleanup errors
+        }
+        voiceSessionRef.current = null;
+      }
+    };
+  }, []);
 
   // Custom clipboard & long-press gesture handlers
   const getCopyableText = (target: HTMLElement | null): string => {
@@ -1715,14 +1832,14 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                       variant="ghost"
                       size="icon"
                       className="btn-3d h-8 w-8 rounded-full bg-secondary/30 hover:bg-destructive/20 text-white hover:text-destructive"
-                      onClick={() => setIsRecording(false)}
+                      onClick={() => stopVoiceInput(true)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
                     <Button
                       size="icon"
                       className="btn-3d btn-glow h-8 w-8 rounded-full bg-gradient-to-br from-primary via-gray-900 to-black hover:from-gray-900 hover:to-black text-white shadow-xl"
-                      onClick={() => setIsRecording(false)}
+                      onClick={() => stopVoiceInput(false)}
                     >
                       <Check className="w-4 h-4" />
                     </Button>
@@ -1790,12 +1907,22 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 {getInputModeLabel(inputMode)}
               </button>
 
-              {/* Microphone Button */}
+              {/* Microphone — press-and-hold for speech recognition */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="btn-3d h-9 w-9 text-white hover:text-foreground shrink-0"
-                onClick={() => setIsRecording(true)}
+                className={`btn-3d h-9 w-9 shrink-0 touch-none select-none ${
+                  isRecording
+                    ? 'text-destructive bg-destructive/15'
+                    : 'text-white hover:text-foreground'
+                }`}
+                style={{ touchAction: 'none' }}
+                aria-label="Drž pre hlasový vstup"
+                aria-pressed={isRecording}
+                onPointerDown={handleMicPointerDown}
+                onPointerUp={handleMicPointerUp}
+                onPointerLeave={handleMicPointerUp}
+                onPointerCancel={handleMicPointerUp}
               >
                 <Mic className="w-4 h-4" />
               </Button>

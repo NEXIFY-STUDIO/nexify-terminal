@@ -39,7 +39,7 @@ export const DEFAULT_SECURITY_HEADERS: SecurityHeadersConfig = {
 
   // Permissions policy - controls browser features
   'Permissions-Policy':
-    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(), usb=()',
 };
 
 /**
@@ -54,7 +54,7 @@ export const DEVELOPMENT_SECURITY_HEADERS: SecurityHeadersConfig = {
   'Referrer-Policy': 'no-referrer-when-downgrade',
   'Content-Security-Policy':
     "default-src 'self' http: https: data: blob: 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http: https:; style-src 'self' 'unsafe-inline' http: https:; img-src 'self' data: https: http:; font-src 'self' data: http: https:;",
-  'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=()',
+  'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(self)',
 };
 
 /**

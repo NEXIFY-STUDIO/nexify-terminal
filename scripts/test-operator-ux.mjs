@@ -25,6 +25,12 @@ import {
   formatNexifyStatusReport,
 } from '../lib/operator/sessionStatus.mjs';
 import { isHelpCommand, formatNexifyHelpReport } from '../lib/operator/sessionHelp.mjs';
+import {
+  detectVoiceSupport,
+  resolveSpeechLanguage,
+  VOICE_UNAVAILABLE_MESSAGE,
+} from '../lib/operator/voiceInput.mjs';
+import { NEXIFY_OPERATOR_PROMPT } from '../services/ai-proxy/ai-proxy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -48,7 +54,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 28 tests\n');
+console.log('📱 Nexify Operator UX — 37 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -253,7 +259,65 @@ test('28 — chat-area wires help report', () => {
   assert(src.includes('formatNexifyHelpReport'), 'missing help formatter');
 });
 
+test('29 — detectVoiceSupport false without API', () => {
+  assert(!detectVoiceSupport({}), 'empty scope');
+  assert(!detectVoiceSupport({ window: {} }), 'no recognition ctor');
+});
+
+test('30 — detectVoiceSupport true with webkitSpeechRecognition', () => {
+  const mock = { webkitSpeechRecognition: function Mock() {} };
+  assert(detectVoiceSupport(mock), 'webkit ctor');
+  assert(detectVoiceSupport({ window: mock }), 'nested window');
+});
+
+test('31 — detectVoiceSupport true with SpeechRecognition', () => {
+  const mock = { SpeechRecognition: function Mock() {} };
+  assert(detectVoiceSupport(mock), 'standard ctor');
+});
+
+test('32 — resolveSpeechLanguage sk-SK', () => {
+  assert(resolveSpeechLanguage('sk-SK') === 'sk-SK', 'sk-SK');
+  assert(resolveSpeechLanguage('sk') === 'sk-SK', 'sk');
+});
+
+test('33 — resolveSpeechLanguage en-US default', () => {
+  assert(resolveSpeechLanguage('en-US') === 'en-US', 'en-US');
+  assert(resolveSpeechLanguage('de-DE') === 'en-US', 'fallback en');
+  assert(resolveSpeechLanguage('') === 'en-US', 'empty');
+});
+
+test('34 — voice unavailable message constant', () => {
+  assert(
+    VOICE_UNAVAILABLE_MESSAGE === 'Voice nie je dostupné na tomto zariadení',
+    'toast copy',
+  );
+});
+
+test('35 — chat-area wires press-and-hold voice input', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('detectVoiceSupport'), 'missing detectVoiceSupport');
+  assert(src.includes('createVoiceSession'), 'missing createVoiceSession');
+  assert(src.includes('handleMicPointerDown'), 'missing pointer down');
+  assert(src.includes('handleMicPointerUp'), 'missing pointer up');
+  assert(src.includes('insertVoiceTranscript'), 'missing transcript insert');
+  assert(src.includes('VOICE_UNAVAILABLE_MESSAGE'), 'missing fallback toast constant');
+  assert(!src.includes('onClick={() => setIsRecording(true)}'), 'stub mic onClick');
+});
+
+test('36 — Permissions-Policy allows microphone for PWA voice', () => {
+  const nextCfg = fs.readFileSync(path.join(rootDir, 'next.config.mjs'), 'utf8');
+  const secHdr = fs.readFileSync(path.join(rootDir, 'lib/security/securityHeaders.ts'), 'utf8');
+  assert(nextCfg.includes('microphone=(self)'), 'next.config microphone');
+  assert(secHdr.includes('microphone=(self)'), 'securityHeaders microphone');
+});
+
+test('37 — NEXIFY_OPERATOR_PROMPT documents voice input', () => {
+  assert(NEXIFY_OPERATOR_PROMPT.includes('Voice input'), 'voice section');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('press-and-hold'), 'hold hint');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('nie auto-send'), 'no auto-send');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/28 passed`);
+console.log(`Operator UX: ${passed}/37 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

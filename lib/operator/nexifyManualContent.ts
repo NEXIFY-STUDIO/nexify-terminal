@@ -43,6 +43,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
       "status (samostatne, bez $) → SESSION + health bez mazania",
       "help / ? / pomoc → stručný návod v chate",
+      "Mikrofón (drž) → hlas do inputu, potom Enter (nie auto-send)",
     ],
   },
   {
@@ -56,6 +57,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "5. Swipe vľavo/vpravo: Chat ↔ Terminal ↔ Files ↔ System",
       "6. Face ID: funguje ak Safari ponúkne WebAuthn (HTTP cez TS môže obmedziť)",
       "7. Tap-to-run: po AI odpovedi tapni cyan $ tlačidlo",
+      "8. Mikrofón: drž tlačidlo → hovor → pusti → text v inpute → Enter",
     ],
   },
   {
@@ -98,13 +100,13 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "✓ Terminal, Files, System, Insolvency",
       "✓ PIN 2366, Tailscale lockdown (verejné IP → 403)",
       "✗ Export PDF/MD/JSON — len UI",
-      "✗ Mikrofón — len animácia, žiadny speech-to-text",
+      "✓ Mikrofón — press-and-hold speech-to-text (sk-SK / en-US)",
       "✗ Gamma/GitHub Models bez API kľúča",
     ],
   },
   {
     id: "operator",
-    title: "Nexify Operator (v1–v7)",
+    title: "Nexify Operator (v1–v9)",
     lines: [
       "Si Nexify — nie chatbot. Rozhranie k Macu cez Tailscale.",
       "Začína stavom SESSION: workspace, stack, last_command, recent_output",
@@ -112,6 +114,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "Po $ príkaze → auto INTENT+RESULT interpretácia výstupu",
       "failed_last:true → neopakuj príkaz, navrhni opravu",
       "help → návod | status → pamäť + health | clear → vymaž + reštart",
+      "v9 voice: drž mikrofón → text v inpute → Enter (ako písaný text)",
     ],
   },
 ]

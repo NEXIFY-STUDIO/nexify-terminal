@@ -37,7 +37,7 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value:
-              'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+              'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self), payment=(), usb=()',
           },
         ],
       },
