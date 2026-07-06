@@ -234,13 +234,15 @@ chat · Nexify :3322 · :3021 · :8788 · last: df -h · failed
 
 Nexify AI nie je „Ako vám môžem pomôcť?“ chatbot. Je to operátor Macu.
 
+System prompt (`NEXIFY_OPERATOR_PROMPT` v `services/ai-proxy/ai-proxy.mjs`) je **jeden megaprompt** s rozhodovacím stromom A→E: meta príkazy → shell → follow-up → voice → voľný text.
+
 ### Správanie
 
 - Začína stavom zo **SESSION** (workspace, stack, last_command, recent_output, failed_last)
 - Text bez prefixu → navrhne `$` príkazy (tap-to-run)
 - `$` / `/` od usera → príkaz už beží, AI len interpretuje (follow-up)
 - Po každom shell príkaze → **automatický follow-up** s INTENT + RESULT
-- **`help`** / **`status`** / **`clear`** — operátorské príkazy v chate (v5–v7)
+- Meta príkazy v chate: **`help`** / **`status`** / **`clear`** / **`export`** (appka vykoná, AI len potvrdí)
 
 ### Formát AI odpovede
 
@@ -341,7 +343,7 @@ tailscale status
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-pnpm run test:all      # 143 testov
+pnpm run test:all      # 145 testov
 pnpm run lint          # TypeScript check
 node scripts/test-stability-network.mjs   # sieť + launchd soak
 ```
@@ -406,9 +408,9 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 47 UX = **143** |
+| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 22 persona + 48 UX = **145** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
-| `pnpm run test:nexify-persona` | Prompt pravidlá v1–v7 |
+| `pnpm run test:nexify-persona` | Megaprompt rozhodovací strom (22 testov) |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
 | `node scripts/test-stability-network.mjs` | Tailscale, burst, launchd recovery |
 

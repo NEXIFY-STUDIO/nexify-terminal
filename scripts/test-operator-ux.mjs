@@ -62,7 +62,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 47 tests\n');
+console.log('📱 Nexify Operator UX — 48 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -319,10 +319,17 @@ test('36 — Permissions-Policy allows microphone for PWA voice', () => {
   assert(secHdr.includes('microphone=(self)'), 'securityHeaders microphone');
 });
 
-test('37 — NEXIFY_OPERATOR_PROMPT documents voice input', () => {
-  assert(NEXIFY_OPERATOR_PROMPT.includes('Voice input'), 'voice section');
+test('37 — NEXIFY_OPERATOR_PROMPT documents voice branch', () => {
+  assert(NEXIFY_OPERATOR_PROMPT.includes('VOZNÝ VSTUP'), 'voice branch');
   assert(NEXIFY_OPERATOR_PROMPT.includes('press-and-hold'), 'hold hint');
-  assert(NEXIFY_OPERATOR_PROMPT.includes('nie auto-send'), 'no auto-send');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('choď na E'), 'routes to free text');
+});
+
+test('48 — NEXIFY_OPERATOR_PROMPT megaprompt decision tree', () => {
+  assert(NEXIFY_OPERATOR_PROMPT.includes('ROZHODOVACÍ STROM'), 'decision tree');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('META PRÍKAZ'), 'meta commands');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('ZÁKAZY'), 'forbidden section');
+  assert(NEXIFY_OPERATOR_PROMPT.includes('tap-to-run tlačidlo'), 'tap-to-run in ACTION rules');
 });
 
 test('38 — isExportSessionCommand exact standalone match', () => {
@@ -440,6 +447,6 @@ test('47 — chat-area wires export command and markdown menu', () => {
 });
 
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/47 passed`);
+console.log(`Operator UX: ${passed}/48 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

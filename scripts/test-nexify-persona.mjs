@@ -1,5 +1,5 @@
 /**
- * 10 focused tests for polished Nexify persona prompt.
+ * Persona tests for unified Nexify megaprompt (decision-tree structure).
  */
 import { NEXIFY_OPERATOR_PROMPT, formatQuestionWithContext, getAiProxyConfig } from '../services/ai-proxy/ai-proxy.mjs';
 
@@ -23,36 +23,37 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('🎭 Nexify Persona — 21 tests\n');
+console.log('🎭 Nexify Persona — 22 tests\n');
 
 await run('01 — Si Nexify, nie chatbot', () => {
-  assert(prompt.includes('Si Nexify — nie chatbot'), 'missing core identity');
-  assert(prompt.includes('rozhranie k Erikovmu Macu'), 'missing Mac interface');
+  assert(prompt.includes('Si Nexify'), 'missing core identity');
+  assert(prompt.includes('Nie si chatbot'), 'missing anti-chatbot rule');
+  assert(prompt.includes('Erikovho Macu'), 'missing Mac reference');
 });
 
-await run('02 — zákaz „Ako vám môžem pomôcť?“', () => {
-  assert(prompt.includes('Nikdy nezačínaj „Ako vám môžem pomôcť?“'), 'missing opener ban');
+await run('02 — zákaz corporate opener', () => {
+  assert(prompt.includes('Ako vám môžem pomôcť'), 'missing opener ban');
 });
 
-await run('03 — začína stavom zo SESSION', () => {
-  assert(prompt.includes('Začni stavom zo SESSION'), 'missing SESSION start rule');
-  assert(prompt.includes('live_stack'), 'missing live_stack reference');
-  assert(prompt.includes('last_command'), 'missing last_command reference');
+await run('03 — SESSION inject — vždy prečítaj prvé', () => {
+  assert(prompt.includes('SESSION (injectované appkou'), 'missing SESSION header');
+  assert(prompt.includes('live_stack'), 'missing live_stack');
+  assert(prompt.includes('last_command'), 'missing last_command');
+  assert(prompt.includes('recent_output'), 'missing recent_output');
 });
 
-await run('04 — text → shell alebo kód', () => {
-  assert(prompt.includes('navrhni $ príkazy'), 'missing shell suggestion rule');
-  assert(prompt.includes('krátky kód'), 'missing code suggestion rule');
+await run('04 — voľný text → max 3 $ príkazy alebo kód', () => {
+  assert(prompt.includes('Navrhni max 3 $ príkazy'), 'missing shell suggestion');
+  assert(prompt.includes('krátky kód'), 'missing code suggestion');
 });
 
-await run('05 — $ alebo / → vykonávanie, nie rady', () => {
-  assert(prompt.includes('User poslal $ alebo /'), 'missing shell trigger');
-  assert(prompt.includes('neradíš znova'), 'missing no-advice rule for shell');
+await run('05 — $ alebo / → shell už beží', () => {
+  assert(prompt.includes('user poslal $ alebo /'), 'missing shell trigger');
+  assert(prompt.includes('Príkaz už beží na Macu'), 'missing execute-mode rule');
 });
 
-await run('06 — tón stručný operátor', () => {
-  assert(prompt.includes('stručný operátor'), 'missing operator tone');
-  assert(prompt.includes('nie asistent z call centra'), 'missing anti-callcenter tone');
+await run('06 — tón stručný a priamy', () => {
+  assert(prompt.includes('stručný, priamy'), 'missing operator tone');
 });
 
 await run('07 — INTENT / ACTION / RESULT formát', () => {
@@ -82,10 +83,9 @@ await run('10 — žiadna stará TECH CENTER persona', () => {
   assert(!prompt.includes('EXCLUSIVELY in the Slovak'), 'legacy language lock leaked');
 });
 
-await run('11 — tap-to-run UI pravidlá', () => {
-  assert(prompt.includes('UI (tap-to-run)'), 'missing tap-to-run section');
-  assert(prompt.includes('tlačidlo'), 'missing button rule');
-  assert(prompt.includes('max 3'), 'missing max commands rule');
+await run('11 — tap-to-run v ACTION pravidlách', () => {
+  assert(prompt.includes('tap-to-run tlačidlo'), 'missing tap-to-run rule');
+  assert(prompt.includes('Max 3 príkazy'), 'missing max commands rule');
 });
 
 await run('12 — ACTION ako samostatné $ riadky', () => {
@@ -93,14 +93,14 @@ await run('12 — ACTION ako samostatné $ riadky', () => {
   assert(prompt.includes('$ prvý príkaz'), 'missing ACTION example');
 });
 
-await run('13 — $ už beží → bez nového ACTION', () => {
-  assert(prompt.includes('príkaz už beží'), 'missing execute-mode rule');
-  assert(prompt.includes('INTENT + RESULT'), 'missing INTENT+RESULT for shell input');
+await run('13 — shell beží → INTENT + RESULT, ACTION prázdne', () => {
+  assert(prompt.includes('INTENT + RESULT'), 'missing INTENT+RESULT for shell');
+  assert(prompt.includes('ACTION nechaj prázdne'), 'missing empty ACTION rule');
 });
 
-await run('14 — SESSION-aware recent_output', () => {
-  assert(prompt.includes('recent_output'), 'missing recent_output rule');
-  assert(prompt.includes('500 znakov'), 'missing output limit hint');
+await run('14 — SESSION-aware recent_output (500 znakov)', () => {
+  assert(prompt.includes('recent_output'), 'missing recent_output');
+  assert(prompt.includes('500 znakov'), 'missing output limit');
 });
 
 await run('15 — failed_last neopakuje príkaz', () => {
@@ -108,40 +108,44 @@ await run('15 — failed_last neopakuje príkaz', () => {
   assert(prompt.includes('neopakuj last_command'), 'missing no-repeat rule');
 });
 
-await run('16 — úspešný last_command bez opakovania ACTION', () => {
+await run('16 — úspešný last_command → ACTION prázdne', () => {
   assert(prompt.includes('failed_last: false'), 'missing success branch');
-  assert(prompt.includes('ACTION nechaj prázdne'), 'missing empty ACTION on repeat');
+  assert(prompt.includes('ACTION prázdne'), 'missing empty ACTION on repeat');
 });
 
-await run('17 — proaktívny follow-up po $ príkaze', () => {
-  assert(prompt.includes('Proaktívny follow-up'), 'missing follow-up section');
-  assert(prompt.includes('automaticky'), 'missing auto trigger rule');
+await run('17 — follow-up po shelli (automaticky)', () => {
+  assert(prompt.includes('FOLLOW-UP PO SHELLI'), 'missing follow-up branch');
+  assert(prompt.includes('automaticky'), 'missing auto trigger');
 });
 
-await run('18 — follow-up je stručný na telefóne', () => {
-  assert(prompt.includes('neopakuj last_command'), 'missing no-repeat on follow-up');
-  assert(prompt.includes('telefóne'), 'missing phone context');
+await run('18 — follow-up stručný na telefóne', () => {
+  assert(prompt.includes('user je na telefóne'), 'missing phone context');
 });
 
-await run('19 — príkaz clear vymaže SESSION a reštartuje UI', () => {
-  assert(prompt.includes('Príkaz clear'), 'missing clear section');
-  assert(prompt.includes('presne „clear“'), 'missing exact clear rule');
-  assert(prompt.includes('reštartuje UI'), 'missing restart rule');
+await run('19 — meta príkaz clear', () => {
+  assert(prompt.includes('META PRÍKAZ'), 'missing meta section');
+  assert(prompt.includes('clear'), 'missing clear');
+  assert(prompt.includes('pamäť vymazaná'), 'missing clear effect');
 });
 
-await run('20 — príkaz status zobrazí SESSION + health', () => {
-  assert(prompt.includes('Príkaz status'), 'missing status section');
-  assert(prompt.includes('presne „status“'), 'missing exact status rule');
-  assert(prompt.includes('Pár s clear'), 'missing clear/status pair rule');
+await run('20 — meta príkaz status', () => {
+  assert(prompt.includes('status'), 'missing status');
+  assert(prompt.includes('health report'), 'missing health report');
 });
 
-await run('21 — príkaz help zobrazí návod v chate', () => {
-  assert(prompt.includes('Príkaz help'), 'missing help section');
-  assert(prompt.includes('„help“, „?“ alebo „pomoc“'), 'missing help aliases');
-  assert(prompt.includes('cyan Manuál'), 'missing manual reference');
+await run('21 — meta príkazy help a export', () => {
+  assert(prompt.includes('help / ? / pomoc'), 'missing help aliases');
+  assert(prompt.includes('export'), 'missing export');
+  assert(prompt.includes('$ export'), 'missing export shell ban');
+});
+
+await run('22 — megaprompt rozhodovací strom A→E', () => {
+  assert(prompt.includes('ROZHODOVACÍ STROM'), 'missing decision tree');
+  assert(prompt.includes('VOZNÝ VSTUP'), 'missing voice branch');
+  assert(prompt.includes('VOĽNÝ TEXT'), 'missing free text branch');
 });
 
 console.log('\n==================================================');
-console.log(`Nexify Persona: ${passed}/21 passed`);
+console.log(`Nexify Persona: ${passed}/22 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

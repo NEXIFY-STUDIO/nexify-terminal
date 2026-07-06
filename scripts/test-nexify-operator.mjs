@@ -41,12 +41,13 @@ const sampleContext = {
 };
 
 test('01 — default prompt identifies Nexify (nie chatbot)', () => {
-  assert(defaultPrompt.includes('Si Nexify — nie chatbot'), 'missing Nexify identity');
+  assert(defaultPrompt.includes('Si Nexify'), 'missing Nexify identity');
+  assert(defaultPrompt.includes('Nie si chatbot'), 'missing anti-chatbot rule');
   assert(mistralConfig.systemPrompt === defaultPrompt, 'config must use operator prompt');
 });
 
 test('02 — prompt references Erikov Mac', () => {
-  assert(defaultPrompt.includes('Erikovmu Macu'), 'missing Erik Mac reference');
+  assert(defaultPrompt.includes('Erikovho Macu'), 'missing Erik Mac reference');
 });
 
 test('03 — prompt references live_stack v SESSION', () => {
@@ -121,7 +122,8 @@ test('13 — buildProviderRequest (mistral) embeds Operator system prompt', () =
   const req = buildProviderRequest('test', mistralConfig, 'test-key', sampleContext);
   const body = JSON.parse(req.options.body);
   assert(body.messages[0].role === 'system', 'missing system message');
-  assert(body.messages[0].content.includes('Si Nexify — nie chatbot'), 'system prompt not Nexify persona');
+  assert(body.messages[0].content.includes('Si Nexify'), 'system prompt not Nexify persona');
+  assert(body.messages[0].content.includes('ROZHODOVACÍ STROM'), 'system prompt missing decision tree');
 });
 
 test('14 — buildProviderRequest (mistral) injects SESSION into user message', () => {
@@ -159,7 +161,7 @@ test('17 — buildProviderRequest (gemini) uses contextual user content', () => 
   const body = JSON.parse(req.options.body);
   const userText = body.contents[0].parts[0].text;
   assert(userText.includes('[SESSION]'), 'gemini missing SESSION in user content');
-  assert(body.systemInstruction.parts[0].text.includes('Si Nexify — nie chatbot'), 'gemini missing Nexify persona');
+  assert(body.systemInstruction.parts[0].text.includes('Si Nexify'), 'gemini missing Nexify persona');
 });
 
 test('18 — chat-area defines buildOperatorContext', () => {
