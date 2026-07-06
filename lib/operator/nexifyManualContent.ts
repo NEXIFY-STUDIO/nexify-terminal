@@ -59,6 +59,8 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "6. Face ID: funguje ak Safari ponúkne WebAuthn (HTTP cez TS môže obmedziť)",
       "7. Tap-to-run: po AI odpovedi tapni cyan $ tlačidlo",
       "8. Mikrofón: drž tlačidlo → hovor → pusti → text v inpute → Enter",
+      "9. Mac pred deployom: pnpm run test:e2e (451 static + lint)",
+      "10. QA prompt: IPHONE17_AIR_PROMPT.md (~2000 znakov)",
     ],
   },
   {
@@ -83,6 +85,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       `cd ${NEXIFY_PROJECT_ROOT}`,
       "launchctl kickstart -k gui/$(id -u)/com.nexify.terminal",
       `pnpm dev:all`,
+      "pnpm run test:e2e",
       "pnpm run test:all",
       `tail -f ${NEXIFY_PATHS.launchdErr}`,
       "lsof -i :3322 -i :3021 -i :8788",

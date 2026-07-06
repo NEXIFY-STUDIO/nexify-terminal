@@ -238,10 +238,16 @@ test('33 — playwright iPhone device profile', () => {
   assert(profile.includes('iPhone') || profile.includes('390'), 'missing iPhone dimensions');
 });
 
-test('34 — README test:all count documented', () => {
+test('34 — README and iPhone 17 Air docs', () => {
   const readme = read('README.md');
   assert(readme.includes('test:all'), 'README missing test:all');
   assert(readme.includes('test:e2e'), 'README missing test:e2e');
+  assert(readme.includes('IPHONE17_AIR_PROMPT'), 'README missing iPhone prompt section');
+  assert(exists('IPHONE17_AIR_PROMPT.md'), 'missing IPHONE17_AIR_PROMPT.md');
+  assert(exists('MOBILE_TESTING_GUIDE.md'), 'missing MOBILE_TESTING_GUIDE.md');
+  const prompt = read('IPHONE17_AIR_PROMPT.md');
+  const block = prompt.match(/```\n([\s\S]*?)\n```/)?.[1] ?? '';
+  assert(block.length >= 1900 && block.length <= 2100, `prompt length ${block.length}, expected ~2000`);
 });
 
 test('35 — git remote origin points to nexify-terminal', () => {

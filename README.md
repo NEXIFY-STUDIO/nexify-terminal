@@ -36,6 +36,7 @@
 16. [iPhone checklist + PWA + Face ID](#16-iphone-checklist--pwa--face-id)
 17. [Čo funguje vs. stub](#17-čo-funguje-vs-stub)
 18. [Manuál v appke (tlačidlo)](#18-manuál-v-appke-tlačidlo)
+19. [iPhone 17 Air — QA prompt (~2000 znakov)](#19-iphone-17-air--qa-prompt-2000-znakov)
 
 ---
 
@@ -434,6 +435,7 @@ Registro: `scripts/test-catalog.mjs` — `pnpm run test:catalog`
 |--------|------------|
 | `pnpm run test:all` | 75 integrity + security + PIN + 21 + 22 + 48 = **166** číslovaných |
 | `pnpm run test:e2e` | **Finalize:** lint + test:all + github-iphone + iPhone static = **451** + typecheck |
+| `pnpm run test:catalog` | 14 kategórií · **505** číslovaných v registri (vrátane 50 live PW) |
 | `pnpm run test:github-iphone` | Po `git pull` — moduly, megaprompt, PWA, operator v1–v10 |
 | `pnpm run test:iphone17-static` | 250 testov (#001–#250), 8 modulov |
 | `pnpm run test:iphone17-300` | 250 static + 50 Playwright live |
@@ -612,17 +614,21 @@ curl -s -X POST http://127.0.0.1:3322/api/ai \
 
 ---
 
-## 16. iPhone checklist + PWA + Face ID
+## 16. iPhone 17 Air checklist + PWA
+
+**Device:** 402×874 · Dynamic Island · viz `MOBILE_TESTING_GUIDE.md` + `IPHONE17_AIR_PROMPT.md`
 
 | Krok | Akcia |
 |------|-------|
+| 0 | Mac: `cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main && pnpm run test:e2e` ✅ |
 | 1 | Tailscale ON (Mac `100.103.0.38`, iPhone `100.103.153.97`) |
 | 2 | Safari → `http://100.103.0.38:3322` |
 | 3 | PIN **`2366`** |
 | 4 | PWA: Zdieľať → **Pridať na plochu** |
 | 5 | Swipe: Chat ↔ Terminal ↔ Files ↔ System |
 | 6 | Chat: text → AI chips; `$ cmd` → shell; tap chip → shell |
-| 7 | Face ID: lockscreen WebAuthn (na HTTP cez Tailscale môže byť limit) |
+| 7 | Voice: drž mikrofón → Enter · `export` → Markdown |
+| 8 | Face ID: WebAuthn (HTTP cez Tailscale môže obmedziť) |
 
 PWA overenie na Macu:
 
@@ -668,4 +674,18 @@ Obsah: `lib/operator/nexifyManualContent.ts`
 
 ---
 
-*Nexify Terminal · private repo · main branch · Mac + Tailscale only · 124+ automated tests*
+## 19. iPhone 17 Air — QA prompt (~2000 znakov)
+
+Súbor: [`IPHONE17_AIR_PROMPT.md`](IPHONE17_AIR_PROMPT.md)
+
+Jeden copy-paste prompt pre QA agenta / manuálny test na iPhone 17 Air — infra, `test:e2e`, PWA setup, operátor v1–v10, gestá, checklist.
+
+Overenie dĺžky:
+
+```bash
+node -e "const fs=require('fs');const p=fs.readFileSync('IPHONE17_AIR_PROMPT.md','utf8').match(/\`\`\`\n([\s\S]*?)\n\`\`\`/)[1];console.log(p.length+' znakov')"
+```
+
+---
+
+*Nexify Terminal · NEXIFY-STUDIO/nexify-terminal · main · Mac + Tailscale · E2E 451 ✅ · 14 test kategórií*
