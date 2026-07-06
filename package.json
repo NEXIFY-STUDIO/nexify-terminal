@@ -27,7 +27,13 @@
     "test:nexify-operator": "node scripts/test-nexify-operator.mjs",
     "test:nexify-persona": "node scripts/test-nexify-persona.mjs",
     "test:operator-ux": "node scripts/test-operator-ux.mjs",
-    "test:all": "node scripts/test-integrity-suite.mjs && node scripts/test-security.mjs && node scripts/test-pin.mjs && node scripts/test-nexify-operator.mjs && node scripts/test-nexify-persona.mjs && node scripts/test-operator-ux.mjs"
+    "test:github-iphone": "node scripts/test-github-iphone-integrity.mjs",
+    "test:catalog": "node -e \"import('./scripts/test-catalog.mjs').then(m=>m.printCatalogSummary())\"",
+    "test:all": "node scripts/test-integrity-suite.mjs && node scripts/test-security.mjs && node scripts/test-pin.mjs && node scripts/test-nexify-operator.mjs && node scripts/test-nexify-persona.mjs && node scripts/test-operator-ux.mjs",
+    "test:e2e": "node scripts/test-e2e-finalize.mjs",
+    "test:pwa": "node scripts/test-pwa.mjs",
+    "test:tailscale": "node scripts/test-tailscale-restriction.mjs",
+    "test:stability": "node scripts/test-stability-network.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

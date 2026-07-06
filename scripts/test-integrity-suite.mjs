@@ -17,9 +17,13 @@ const filesToTest = {
   rateLimiter: path.join(rootDir, 'lib/security/rateLimiter.ts'),
   packageJson: path.join(rootDir, 'package.json'),
   nextConfig: path.join(rootDir, 'next.config.mjs'),
+  aiProxy: path.join(rootDir, 'services/ai-proxy/ai-proxy.mjs'),
+  sessionExport: path.join(rootDir, 'lib/operator/sessionExport.mjs'),
+  voiceInput: path.join(rootDir, 'lib/operator/voiceInput.mjs'),
+  sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.mjs'),
 };
 
-console.log('🔍 Running Master Integrity Test Suite (61 Assertions)...\n');
+console.log('🔍 Running Master Integrity Test Suite (75 Assertions)...\n');
 
 let failed = 0;
 let passed = 0;
@@ -57,7 +61,10 @@ const assertionsList = [
       { name: '8. Lucide icon (Terminal)', pattern: /<Terminal/ },
       { name: '9. Tailwind bg-background', pattern: /bg-background/ },
       { name: '10. API route fetch call', pattern: /fetch\(['"`]\/api\// },
-      { name: '10b. In-app Manuál button', pattern: /NexifyManualSheet/ }
+      { name: '10b. In-app Manuál button', pattern: /NexifyManualSheet/ },
+      { name: '10c. Operator export command', pattern: /isExportSessionCommand/ },
+      { name: '10d. Voice press-and-hold mic', pattern: /handleMicPointerDown/ },
+      { name: '10e. Session markdown export', pattern: /formatSessionMarkdown/ },
     ]
   },
   {
@@ -169,7 +176,42 @@ const assertionsList = [
       { name: '59. nextConfig object definition', pattern: /const\s+nextConfig\s*=/ },
       { name: '60. Disable powered-by header', pattern: /poweredByHeader:\s*false/ }
     ]
-  }
+  },
+  {
+    target: 'aiProxy',
+    path: filesToTest.aiProxy,
+    assertions: [
+      { name: '61. NEXIFY_OPERATOR_PROMPT export', pattern: /export const NEXIFY_OPERATOR_PROMPT/ },
+      { name: '62. Megaprompt decision tree', pattern: /ROZHODOVACÍ STROM/ },
+      { name: '63. META PRÍKAZ branch', pattern: /META PRÍKAZ/ },
+      { name: '64. Voice branch in prompt', pattern: /VOZNÝ VSTUP/ },
+    ]
+  },
+  {
+    target: 'sessionExport',
+    path: filesToTest.sessionExport,
+    assertions: [
+      { name: '65. formatSessionMarkdown', pattern: /export function formatSessionMarkdown/ },
+      { name: '66. redactExportSecrets', pattern: /export function redactExportSecrets/ },
+      { name: '67. deliverSessionMarkdown', pattern: /export async function deliverSessionMarkdown/ },
+    ]
+  },
+  {
+    target: 'voiceInput',
+    path: filesToTest.voiceInput,
+    assertions: [
+      { name: '68. detectVoiceSupport', pattern: /export function detectVoiceSupport/ },
+      { name: '69. createVoiceSession', pattern: /export function createVoiceSession/ },
+    ]
+  },
+  {
+    target: 'sessionHelp',
+    path: filesToTest.sessionHelp,
+    assertions: [
+      { name: '70. export in help report', pattern: /export\s+→/ },
+      { name: '71. voice in help report', pattern: /Voice \(v9\)/ },
+    ]
+  },
 ];
 
 assertionsList.forEach(group => {
@@ -177,11 +219,11 @@ assertionsList.forEach(group => {
 });
 
 console.log('\n==================================================');
-console.log(`Integrity Check Result: ${passed}/61 Passed`);
+console.log(`Integrity Check Result: ${passed}/75 Passed`);
 console.log('==================================================');
 
-if (failed === 0 && passed === 61) {
-  console.log('✅ ALL 61 INTEGRITY CHECKS PASSED');
+if (failed === 0 && passed === 75) {
+  console.log('✅ ALL 75 INTEGRITY CHECKS PASSED');
   process.exit(0);
 } else {
   console.error(`❌ ${failed} INTEGRITY CHECKS FAILED`);

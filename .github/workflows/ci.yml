@@ -36,7 +36,11 @@ jobs:
           AI_PROXY_PORT: 8788
           AI_PROVIDER: mistral
           MISTRAL_API_KEY: ci-smoke-placeholder
-      - name: Test suite
+      - name: Core test suite
         run: pnpm run test:all
         env:
           AI_PROXY_PORT: 8788
+      - name: GitHub pull → iPhone integrity
+        run: pnpm run test:github-iphone
+      - name: iPhone 17 Air static (250)
+        run: pnpm run test:iphone17-static

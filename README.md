@@ -343,7 +343,8 @@ tailscale status
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-pnpm run test:all      # 145 testov
+pnpm run test:e2e      # 451 static + lint (finalize)
+pnpm run test:all      # 166 číslovaných + security + PIN
 pnpm run lint          # TypeScript check
 node scripts/test-stability-network.mjs   # sieť + launchd soak
 ```
@@ -406,15 +407,49 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 ## 11. Testy a CI
 
+### Kategórie (14 celkom)
+
+| # | Kategória | Príkaz | Počet | CI | iPhone pull |
+|---|-----------|--------|-------|-----|-------------|
+| 1 | Code Integrity | `test:integrity-61` | **75** | ✓ | ✓ |
+| 2 | Security Audit | `test:security` | audit | ✓ | — |
+| 3 | PIN / AuthGuard | `test:pin` | 4 scenáre | ✓ | — |
+| 4 | Nexify Operator | `test:nexify-operator` | **21** | ✓ | ✓ |
+| 5 | Megaprompt Persona | `test:nexify-persona` | **22** | ✓ | ✓ |
+| 6 | Operator UX | `test:operator-ux` | **48** | ✓ | ✓ |
+| 7 | GitHub → iPhone Integrity | `test:github-iphone` | **35** | ✓ | ✓ |
+| 8 | iPhone 17 Air Static | `test:iphone17-static` | **250** | ✓ | ✓ |
+| 9 | iPhone 17 Air Live | `test:iphone17-live` | **50** | — | — |
+| 10 | PWA Integration | `test:pwa` | audit | — | ✓ |
+| 11 | Tailscale Lockdown | `test:tailscale` | live | — | — |
+| 12 | Stability / Network | `test:stability` | live | — | — |
+| 13 | Button Hit Targets | `test:button-hit-targets` | Playwright | — | — |
+| 14 | Lovable Editor Split | `test:lovable-editor-split` | legacy | — | — |
+
+Registro: `scripts/test-catalog.mjs` — `pnpm run test:catalog`
+
+### Hlavné príkazy
+
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 22 persona + 48 UX = **145** |
-| `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
-| `pnpm run test:nexify-persona` | Megaprompt rozhodovací strom (22 testov) |
-| `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
-| `node scripts/test-stability-network.mjs` | Tailscale, burst, launchd recovery |
+| `pnpm run test:all` | 75 integrity + security + PIN + 21 + 22 + 48 = **166** číslovaných |
+| `pnpm run test:e2e` | **Finalize:** lint + test:all + github-iphone + iPhone static = **451** + typecheck |
+| `pnpm run test:github-iphone` | Po `git pull` — moduly, megaprompt, PWA, operator v1–v10 |
+| `pnpm run test:iphone17-static` | 250 testov (#001–#250), 8 modulov |
+| `pnpm run test:iphone17-300` | 250 static + 50 Playwright live |
 
-GitHub Actions: `.github/workflows/ci.yml` — beží na každý push do `main`.
+### iPhone 17 Air — pull z GitHubu
+
+```bash
+git pull origin main
+pnpm install
+pnpm run test:github-iphone    # 35 — overí repo po pulli
+pnpm run test:iphone17-static  # 250 — iPhone UI/PWA patterns
+pnpm run test:e2e              # full finalize pred deployom
+launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
+```
+
+GitHub Actions: `.github/workflows/ci.yml` — `lint` + `test:all` + `test:github-iphone` + `test:iphone17-static` na každý push do `main`.
 
 ---
 
