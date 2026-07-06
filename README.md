@@ -4,7 +4,8 @@
 
 | Položka | Hodnota |
 |---------|---------|
-| **Repozitár** | `youh4ck3dme/nexify-terminal` (private) |
+| **Repozitár (canonical)** | `NEXIFY-STUDIO/nexify-terminal` |
+| **Fork (private)** | `youh4ck3dme/nexify-terminal` |
 | **Projekt na Macu** | `/Users/erikbabcan/aaa-terminalnexify2-with-v-main` |
 | **UI port** | `3322` |
 | **Hack API (shell)** | `3021` |
@@ -236,6 +237,7 @@ Nexify AI nie je „Ako vám môžem pomôcť?“ chatbot. Je to operátor Macu.
 - Text bez prefixu → navrhne `$` príkazy (tap-to-run)
 - `$` / `/` od usera → príkaz už beží, AI len interpretuje (follow-up)
 - Po každom shell príkaze → **automatický follow-up** s INTENT + RESULT
+- **`help`** / **`status`** / **`clear`** — operátorské príkazy v chate (v5–v7)
 
 ### Formát AI odpovede
 
@@ -336,7 +338,7 @@ tailscale status
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-pnpm run test:all      # 111 testov
+pnpm run test:all      # 124 testov
 pnpm run lint          # TypeScript check
 node scripts/test-stability-network.mjs   # sieť + launchd soak
 ```
@@ -345,7 +347,7 @@ node scripts/test-stability-network.mjs   # sieť + launchd soak
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-git pull fork main
+git pull origin main
 launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
 ```
 
@@ -403,7 +405,7 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 |--------|------------|
 | `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 28 UX = **124** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
-| `pnpm run test:nexify-persona` | Prompt pravidlá v1–v4 |
+| `pnpm run test:nexify-persona` | Prompt pravidlá v1–v7 |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
 | `node scripts/test-stability-network.mjs` | Tailscale, burst, launchd recovery |
 
@@ -453,6 +455,7 @@ GitHub Actions: `.github/workflows/ci.yml` — beží na každý push do `main`.
 ├─────────────────────────────────────────────────────────────┤
 │  iPhone URL            →  http://100.103.0.38:3322          │
 │  PIN                   →  2366                              │
+│  help / status / clear →  návod / pamäť / wipe + reštart    │
 │  Reštart stacku        →  launchctl kickstart -k gui/$(id -u)/com.nexify.terminal │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -517,7 +520,7 @@ node /Users/erikbabcan/aaa-terminalnexify2-with-v-main/scripts/test-stability-ne
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-git pull fork main
+git pull origin main
 launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
 ```
 
@@ -595,6 +598,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3322/sw.js
 | Funkcia | Stav |
 |---------|------|
 | Chat + Mistral AI | ✓ (MISTRAL_API_KEY_1 v `.env.local`) |
+| Operator príkazy `help` / `status` / `clear` | ✓ |
 | Shell `$` / `/` + tap-to-run + follow-up | ✓ |
 | Terminal, Files, System, Insolvency | ✓ |
 | PIN 2366, Tailscale lock (8.8.8.8 → 403) | ✓ |
@@ -615,7 +619,7 @@ V UI headeri (záložka Chat) je cyan tlačidlo **Manuál** — otvorí bočný 
 - ENV / Mistral cesty
 - macOS copy-paste príkazy
 - Čo funguje vs. stub
-- Nexify Operator v1–v4
+- Nexify Operator v1–v7 (help, status, clear)
 - Reštart: `launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`
 
 Súbor v kóde: `components/nexify-manual-sheet.tsx`  

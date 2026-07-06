@@ -85,7 +85,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "lsof -i :3322 -i :3021 -i :8788",
       "curl -s http://127.0.0.1:3322/api/health",
       "curl -s http://127.0.0.1:8788/health",
-      `git pull fork main && launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`,
+      `git pull origin main && launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`,
     ],
   },
   {
@@ -93,6 +93,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
     title: "Čo funguje / čo je stub",
     lines: [
       "✓ Chat + Mistral AI (MISTRAL_API_KEY_1 v .env.local)",
+      "✓ help / status / clear operátorské príkazy",
       "✓ Shell $ / / + tap-to-run + auto follow-up",
       "✓ Terminal, Files, System, Insolvency",
       "✓ PIN 2366, Tailscale lockdown (verejné IP → 403)",
