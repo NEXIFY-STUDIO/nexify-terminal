@@ -24,6 +24,7 @@ import {
   isStatusCommand,
   formatNexifyStatusReport,
 } from '../lib/operator/sessionStatus.mjs';
+import { isHelpCommand, formatNexifyHelpReport } from '../lib/operator/sessionHelp.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -47,7 +48,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 25 tests\n');
+console.log('📱 Nexify Operator UX — 28 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -228,7 +229,31 @@ test('25 — chat-area wires status report', () => {
   assert(src.includes('formatNexifyStatusReport'), 'missing status formatter');
 });
 
+test('26 — isHelpCommand accepts help ? pomoc', () => {
+  assert(isHelpCommand('help'), 'help');
+  assert(isHelpCommand('?'), 'question mark');
+  assert(isHelpCommand('  POMOC  '), 'pomoc');
+  assert(!isHelpCommand('$ help'), 'no shell prefix');
+  assert(!isHelpCommand('help me'), 'no partial');
+});
+
+test('27 — formatNexifyHelpReport lists operator commands', () => {
+  const report = formatNexifyHelpReport();
+  assert(report.includes('NEXIFY HELP'), 'header');
+  assert(report.includes('status'), 'status cmd');
+  assert(report.includes('clear'), 'clear cmd');
+  assert(/tap-to-run/i.test(report), 'tap-to-run');
+  assert(report.includes('2366'), 'pin');
+});
+
+test('28 — chat-area wires help report', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('isHelpCommand'), 'missing help detector');
+  assert(src.includes('handleHelpReport'), 'missing help handler');
+  assert(src.includes('formatNexifyHelpReport'), 'missing help formatter');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/25 passed`);
+console.log(`Operator UX: ${passed}/28 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

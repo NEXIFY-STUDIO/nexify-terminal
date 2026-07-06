@@ -43,6 +43,7 @@ import {
   fetchNexifyServiceHealth,
   formatNexifyStatusReport,
 } from "@/lib/operator/sessionStatus.mjs"
+import { isHelpCommand, formatNexifyHelpReport } from "@/lib/operator/sessionHelp.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -958,6 +959,22 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
+  const handleHelpReport = () => {
+    triggerHaptic('light');
+    setInput("");
+
+    const report = formatNexifyHelpReport({
+      iphoneUi: 'http://100.103.0.38:3322',
+      pin: '2366',
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Math.random().toString(), role: 'user', content: 'help', type: 'chat' },
+      { id: Math.random().toString(), role: 'assistant', content: report, type: 'chat' },
+    ]);
+  };
+
   const handleClearSession = () => {
     triggerHaptic('heavy');
     setInput("");
@@ -985,6 +1002,11 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     if (isStatusCommand(trimmed)) {
       void handleStatusReport();
+      return;
+    }
+
+    if (isHelpCommand(trimmed)) {
+      handleHelpReport();
       return;
     }
 

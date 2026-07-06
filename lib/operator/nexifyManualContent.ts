@@ -42,6 +42,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "Badge AI / $ / / vľavo od mikrofónu → prepína režim vstupu",
       "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
       "status (samostatne, bez $) → SESSION + health bez mazania",
+      "help / ? / pomoc → stručný návod v chate",
     ],
   },
   {
@@ -102,14 +103,14 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: "operator",
-    title: "Nexify Operator (v1–v6)",
+    title: "Nexify Operator (v1–v7)",
     lines: [
       "Si Nexify — nie chatbot. Rozhranie k Macu cez Tailscale.",
       "Začína stavom SESSION: workspace, stack, last_command, recent_output",
       "Text → navrhni $ príkazy (samostatné riadky, max 3)",
       "Po $ príkaze → auto INTENT+RESULT interpretácia výstupu",
       "failed_last:true → neopakuj príkaz, navrhni opravu",
-      "status → prečítaj pamäť + health | clear → vymaž + reštart",
+      "help → návod | status → pamäť + health | clear → vymaž + reštart",
     ],
   },
 ]
