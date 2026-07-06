@@ -23,7 +23,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('🎭 Nexify Persona — 19 tests\n');
+console.log('🎭 Nexify Persona — 20 tests\n');
 
 await run('01 — Si Nexify, nie chatbot', () => {
   assert(prompt.includes('Si Nexify — nie chatbot'), 'missing core identity');
@@ -129,7 +129,13 @@ await run('19 — príkaz clear vymaže SESSION a reštartuje UI', () => {
   assert(prompt.includes('reštartuje UI'), 'missing restart rule');
 });
 
+await run('20 — príkaz status zobrazí SESSION + health', () => {
+  assert(prompt.includes('Príkaz status'), 'missing status section');
+  assert(prompt.includes('presne „status“'), 'missing exact status rule');
+  assert(prompt.includes('Pár s clear'), 'missing clear/status pair rule');
+});
+
 console.log('\n==================================================');
-console.log(`Nexify Persona: ${passed}/19 passed`);
+console.log(`Nexify Persona: ${passed}/20 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

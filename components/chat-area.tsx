@@ -38,6 +38,11 @@ import {
   clearNexifySessionMemory,
   restartNexifyApp,
 } from "@/lib/operator/sessionReset.mjs"
+import {
+  isStatusCommand,
+  fetchNexifyServiceHealth,
+  formatNexifyStatusReport,
+} from "@/lib/operator/sessionStatus.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -914,6 +919,45 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   };
 
+  const handleStatusReport = async () => {
+    triggerHaptic('light');
+    setInput("");
+
+    const snapshot = messagesRef.current;
+    const session = buildSessionFields(snapshot);
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Math.random().toString(), role: 'user', content: 'status', type: 'chat' },
+    ]);
+
+    try {
+      const health = await fetchNexifyServiceHealth();
+      const report = formatNexifyStatusReport({
+        session,
+        health,
+        shellSessionId,
+        viewMode,
+        messageCount: snapshot.length,
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        { id: Math.random().toString(), role: 'assistant', content: report, type: 'chat' },
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          role: 'assistant',
+          content: `NEXIFY STATUS\nerror: ${err.message}`,
+          type: 'chat',
+        },
+      ]);
+    }
+  };
+
   const handleClearSession = () => {
     triggerHaptic('heavy');
     setInput("");
@@ -936,6 +980,11 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     if (isClearSessionCommand(trimmed)) {
       handleClearSession();
+      return;
+    }
+
+    if (isStatusCommand(trimmed)) {
+      void handleStatusReport();
       return;
     }
 

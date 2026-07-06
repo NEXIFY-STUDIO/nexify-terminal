@@ -20,6 +20,10 @@ import {
   clearNexifySessionMemory,
   NEXIFY_MEMORY_STORAGE_KEYS,
 } from '../lib/operator/sessionReset.mjs';
+import {
+  isStatusCommand,
+  formatNexifyStatusReport,
+} from '../lib/operator/sessionStatus.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -43,7 +47,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 22 tests\n');
+console.log('📱 Nexify Operator UX — 25 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -196,7 +200,35 @@ test('22 — chat-area wires clear session + app restart', () => {
   assert(src.includes('restartNexifyApp'), 'missing app restart');
 });
 
+test('23 — isStatusCommand exact standalone match', () => {
+  assert(isStatusCommand('status'), 'status');
+  assert(isStatusCommand('  STATUS  '), 'case insensitive');
+  assert(!isStatusCommand('$ status'), 'no shell prefix');
+  assert(!isStatusCommand('status report'), 'no partial');
+});
+
+test('24 — formatNexifyStatusReport includes SESSION fields', () => {
+  const report = formatNexifyStatusReport({
+    session: { lastCommand: 'df -h', failedLast: true, recentOutput: 'Filesystem' },
+    health: { ui: { status: 'ok' }, ai: { status: 'ok', provider: 'mistral' } },
+    shellSessionId: 'abc',
+    viewMode: 'chat',
+    messageCount: 7,
+  });
+  assert(report.includes('last_command: df -h'), 'last command');
+  assert(report.includes('failed_last: true'), 'failed flag');
+  assert(report.includes('mistral'), 'ai provider');
+  assert(report.includes('clear ='), 'clear tip');
+});
+
+test('25 — chat-area wires status report', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('isStatusCommand'), 'missing status detector');
+  assert(src.includes('handleStatusReport'), 'missing status handler');
+  assert(src.includes('formatNexifyStatusReport'), 'missing status formatter');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/22 passed`);
+console.log(`Operator UX: ${passed}/25 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

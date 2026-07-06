@@ -41,6 +41,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "macOS Terminál → launchctl, testy, údržba stacku",
       "Badge AI / $ / / vľavo od mikrofónu → prepína režim vstupu",
       "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
+      "status (samostatne, bez $) → SESSION + health bez mazania",
     ],
   },
   {
@@ -101,13 +102,14 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
   },
   {
     id: "operator",
-    title: "Nexify Operator (v1–v4)",
+    title: "Nexify Operator (v1–v6)",
     lines: [
       "Si Nexify — nie chatbot. Rozhranie k Macu cez Tailscale.",
       "Začína stavom SESSION: workspace, stack, last_command, recent_output",
       "Text → navrhni $ príkazy (samostatné riadky, max 3)",
       "Po $ príkaze → auto INTENT+RESULT interpretácia výstupu",
       "failed_last:true → neopakuj príkaz, navrhni opravu",
+      "status → prečítaj pamäť + health | clear → vymaž + reštart",
     ],
   },
 ]
