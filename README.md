@@ -212,10 +212,12 @@ Každý riadok `$ ...` sa zobrazí ako samostatné tlačidlo.
 | `clear` | presne `clear` | Vymaže SESSION pamäť + reštart UI | `clear` |
 | `status` | presne `status` | SESSION + health bez mazania | `status` |
 | `help` | `help`, `?`, `pomoc` | Stručný návod v chate | `help` |
+| `export` | presne `export` | SESSION log ako Markdown (share / clipboard) | `export` |
 
-- **`help`** / **`?`** / **`pomoc`** — návod: režimy, tap-to-run, status, clear
+- **`help`** / **`?`** / **`pomoc`** — návod: režimy, tap-to-run, status, clear, export
 - **`status`** — prečítaj pamäť: `last_command`, `failed_last`, health `:3322` / `:8788`, shell stav
 - **`clear`** — vymaž pamäť + reštart UI (PIN zostane)
+- **`export`** — exportuj chat + shell + AI log ako Markdown (bez PIN/.env); alebo Export menu → Markdown
 
 **Status strip** (pod headerom v Chate):
 
@@ -339,7 +341,7 @@ tailscale status
 
 ```bash
 cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-pnpm run test:all      # 133 testov
+pnpm run test:all      # 143 testov
 pnpm run lint          # TypeScript check
 node scripts/test-stability-network.mjs   # sieť + launchd soak
 ```
@@ -404,7 +406,7 @@ CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkci
 
 | Príkaz | Čo testuje |
 |--------|------------|
-| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 37 UX = **133** |
+| `pnpm run test:all` | 61 integrity + security + PIN + 21 operator + 21 persona + 47 UX = **143** |
 | `pnpm run test:nexify-operator` | AI proxy, SESSION, persona |
 | `pnpm run test:nexify-persona` | Prompt pravidlá v1–v7 |
 | `pnpm run test:operator-ux` | tap-to-run, input modes, session context |
@@ -599,12 +601,13 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3322/sw.js
 | Funkcia | Stav |
 |---------|------|
 | Chat + Mistral AI | ✓ (MISTRAL_API_KEY_1 v `.env.local`) |
-| Operator príkazy `help` / `status` / `clear` | ✓ |
+| Operator príkazy `help` / `status` / `clear` / `export` | ✓ |
 | Shell `$` / `/` + tap-to-run + follow-up | ✓ |
 | Terminal, Files, System, Insolvency | ✓ |
 | PIN 2366, Tailscale lock (8.8.8.8 → 403) | ✓ |
 | PWA manifest + service worker | ✓ |
-| Export PDF/MD/JSON | ✗ stub |
+| Export Markdown (`export` / Export menu) | ✓ share alebo clipboard |
+| Export PDF/JSON | ✗ stub |
 | Mikrofón / voice | ✓ press-and-hold (webkitSpeechRecognition, sk-SK / en-US) |
 | Gamma bez `GAMMA_API_KEY` | ✗ |
 | GitHub Models bez tokenu | ✗ |
@@ -620,7 +623,7 @@ V UI headeri (záložka Chat) je cyan tlačidlo **Manuál** — otvorí bočný 
 - ENV / Mistral cesty
 - macOS copy-paste príkazy
 - Čo funguje vs. stub
-- Nexify Operator v1–v9 (help, status, clear, voice)
+- Nexify Operator v1–v10 (help, status, clear, voice, export)
 - Reštart: `launchctl kickstart -k gui/$(id -u)/com.nexify.terminal`
 
 Súbor v kóde: `components/nexify-manual-sheet.tsx`  

@@ -31,6 +31,14 @@ import {
   VOICE_UNAVAILABLE_MESSAGE,
 } from '../lib/operator/voiceInput.mjs';
 import { NEXIFY_OPERATOR_PROMPT } from '../services/ai-proxy/ai-proxy.mjs';
+import {
+  isExportSessionCommand,
+  formatSessionMarkdown,
+  redactExportSecrets,
+  parseOperatorSections,
+  deliverSessionMarkdown,
+  formatExportConfirmation,
+} from '../lib/operator/sessionExport.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
@@ -54,7 +62,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-console.log('📱 Nexify Operator UX — 37 tests\n');
+console.log('📱 Nexify Operator UX — 47 tests\n');
 
 test('01 — extract single $ line', () => {
   assert(
@@ -317,7 +325,121 @@ test('37 — NEXIFY_OPERATOR_PROMPT documents voice input', () => {
   assert(NEXIFY_OPERATOR_PROMPT.includes('nie auto-send'), 'no auto-send');
 });
 
+test('38 — isExportSessionCommand exact standalone match', () => {
+  assert(isExportSessionCommand('export'), 'export');
+  assert(isExportSessionCommand('  EXPORT  '), 'case insensitive');
+  assert(!isExportSessionCommand('$ export'), 'no shell prefix');
+  assert(!isExportSessionCommand('export log'), 'no partial');
+});
+
+test('39 — formatSessionMarkdown includes header and timestamp', () => {
+  const md = formatSessionMarkdown(
+    [{ role: 'user', content: 'hello', type: 'chat' }],
+    { exportedAt: new Date('2026-07-06T10:00:00.000Z') },
+  );
+  assert(md.includes('# Nexify Session Export'), 'title');
+  assert(md.includes('**Exported:** 2026-07-06T10:00:00.000Z'), 'exported at');
+  assert(md.includes('**Timestamp:**'), 'entry timestamp');
+  assert(md.includes('hello'), 'user content');
+});
+
+test('40 — formatSessionMarkdown strips ANSI from output', () => {
+  const md = formatSessionMarkdown([
+    { role: 'system', content: 'ok', type: 'command' },
+    { role: 'system', content: '\u001b[31merror\u001b[0m', type: 'output' },
+  ]);
+  assert(md.includes('Shell command'), 'command label');
+  assert(md.includes('Terminal output'), 'output label');
+  assert(md.includes('error'), 'plain text');
+  assert(!md.includes('\u001b[31m'), 'ansi stripped');
+});
+
+test('41 — formatSessionMarkdown parses INTENT ACTION RESULT', () => {
+  const md = formatSessionMarkdown([
+    {
+      role: 'assistant',
+      type: 'chat',
+      content: 'INTENT: check disk\nACTION:\n$ df -h\nRESULT: table of mounts',
+    },
+  ]);
+  assert(md.includes('### INTENT'), 'intent heading');
+  assert(md.includes('check disk'), 'intent body');
+  assert(md.includes('### ACTION'), 'action heading');
+  assert(md.includes('$ df -h'), 'action command');
+  assert(md.includes('### RESULT'), 'result heading');
+  assert(md.includes('table of mounts'), 'result body');
+});
+
+test('42 — redactExportSecrets removes env keys and PIN', () => {
+  const redacted = redactExportSecrets(
+    'MISTRAL_API_KEY_1=sk-abc123456789\nPIN: 2366\npasscode 2366',
+  );
+  assert(redacted.includes('[REDACTED]'), 'redacted marker');
+  assert(!redacted.includes('sk-abc123456789'), 'api key removed');
+  assert(!redacted.includes('2366'), 'pin removed');
+});
+
+test('43 — parseOperatorSections extracts structured AI blocks', () => {
+  const parsed = parseOperatorSections('INTENT: x\nACTION:\n$ ls\nRESULT: files');
+  assert(parsed.hasStructure, 'structured');
+  assert(parsed.intent === 'x', 'intent');
+  assert(parsed.action.join('|') === '$ ls', 'action');
+  assert(parsed.result === 'files', 'result');
+});
+
+test('44 — deliverSessionMarkdown prefers navigator.share', async () => {
+  let shared = false;
+  const scope = {
+    navigator: {
+      share: async () => {
+        shared = true;
+      },
+      canShare: () => true,
+      clipboard: {
+        writeText: async () => {
+          throw new Error('clipboard should not run');
+        },
+      },
+    },
+  };
+  const result = await deliverSessionMarkdown('# test', scope);
+  assert(shared, 'share called');
+  assert(result.method === 'share', 'share method');
+});
+
+test('45 — deliverSessionMarkdown falls back to clipboard', async () => {
+  let copied = '';
+  const scope = {
+    navigator: {
+      clipboard: {
+        writeText: async (text) => {
+          copied = text;
+        },
+      },
+    },
+  };
+  const result = await deliverSessionMarkdown('# fallback', scope);
+  assert(copied === '# fallback', 'clipboard text');
+  assert(result.method === 'clipboard', 'clipboard method');
+});
+
+test('46 — formatExportConfirmation describes delivery method', () => {
+  assert(formatExportConfirmation('share').includes('share sheet'), 'share copy');
+  assert(formatExportConfirmation('clipboard').includes('schránky'), 'clipboard copy');
+  assert(formatExportConfirmation('clipboard').includes('vyfiltrované'), 'redaction note');
+});
+
+test('47 — chat-area wires export command and markdown menu', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('isExportSessionCommand'), 'missing export detector');
+  assert(src.includes('handleExportSession'), 'missing export handler');
+  assert(src.includes('formatSessionMarkdown'), 'missing markdown formatter');
+  assert(src.includes('deliverSessionMarkdown'), 'missing deliver helper');
+  assert(src.includes('Export as Markdown'), 'menu item');
+  assert(src.includes('void handleExportSession()'), 'menu wired');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/37 passed`);
+console.log(`Operator UX: ${passed}/47 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);

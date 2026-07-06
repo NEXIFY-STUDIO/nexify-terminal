@@ -50,6 +50,12 @@ import {
   createVoiceSession,
   VOICE_UNAVAILABLE_MESSAGE,
 } from "@/lib/operator/voiceInput.mjs"
+import {
+  isExportSessionCommand,
+  formatSessionMarkdown,
+  deliverSessionMarkdown,
+  formatExportConfirmation,
+} from "@/lib/operator/sessionExport.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
@@ -1092,6 +1098,59 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     ]);
   };
 
+  const handleExportSession = async () => {
+    triggerHaptic('light');
+    setInput("");
+    setExportDropdownOpen(false);
+
+    const snapshot = messagesRef.current;
+    const markdown = formatSessionMarkdown(snapshot);
+
+    setMessages((prev) => [
+      ...prev,
+      { id: Math.random().toString(), role: 'user', content: 'export', type: 'chat' },
+    ]);
+
+    try {
+      const { method } = await deliverSessionMarkdown(markdown);
+      toast({
+        title: method === 'share' ? 'SESSION zdieľaná' : 'SESSION skopírovaná',
+        description:
+          method === 'share'
+            ? 'Markdown export odoslaný cez share sheet.'
+            : 'Markdown export je v schránke.',
+        duration: 3000,
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          role: 'assistant',
+          content: formatExportConfirmation(method),
+          type: 'chat',
+        },
+      ]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Export zlyhal';
+      triggerHaptic('error');
+      toast({
+        title: 'Export zlyhal',
+        description: message,
+        variant: 'destructive',
+        duration: 3000,
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          role: 'assistant',
+          content: `NEXIFY EXPORT\nerror: ${message}`,
+          type: 'chat',
+        },
+      ]);
+    }
+  };
+
   const handleClearSession = () => {
     triggerHaptic('heavy');
     setInput("");
@@ -1124,6 +1183,11 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     if (isHelpCommand(trimmed)) {
       handleHelpReport();
+      return;
+    }
+
+    if (isExportSessionCommand(trimmed)) {
+      void handleExportSession();
       return;
     }
 
@@ -1575,7 +1639,10 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                 <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>
                   Export as PDF
                 </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>
+                <button
+                  className="dropdown-item text-[10px]"
+                  onClick={() => void handleExportSession()}
+                >
                   Export as Markdown
                 </button>
                 <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>

@@ -43,6 +43,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
       "status (samostatne, bez $) → SESSION + health bez mazania",
       "help / ? / pomoc → stručný návod v chate",
+      "export (samostatne) → SESSION log ako Markdown (share / clipboard)",
       "Mikrofón (drž) → hlas do inputu, potom Enter (nie auto-send)",
     ],
   },
@@ -99,14 +100,15 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "✓ Shell $ / / + tap-to-run + auto follow-up",
       "✓ Terminal, Files, System, Insolvency",
       "✓ PIN 2366, Tailscale lockdown (verejné IP → 403)",
-      "✗ Export PDF/MD/JSON — len UI",
+      "✓ Export Markdown — príkaz export alebo Export menu (MD)",
+      "✗ Export PDF/JSON — zatiaľ stub",
       "✓ Mikrofón — press-and-hold speech-to-text (sk-SK / en-US)",
       "✗ Gamma/GitHub Models bez API kľúča",
     ],
   },
   {
     id: "operator",
-    title: "Nexify Operator (v1–v9)",
+    title: "Nexify Operator (v1–v10)",
     lines: [
       "Si Nexify — nie chatbot. Rozhranie k Macu cez Tailscale.",
       "Začína stavom SESSION: workspace, stack, last_command, recent_output",
@@ -115,6 +117,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "failed_last:true → neopakuj príkaz, navrhni opravu",
       "help → návod | status → pamäť + health | clear → vymaž + reštart",
       "v9 voice: drž mikrofón → text v inpute → Enter (ako písaný text)",
+      "v10 export: export alebo Export → Markdown (bez PIN/.env)",
     ],
   },
 ]
