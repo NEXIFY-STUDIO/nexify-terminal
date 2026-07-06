@@ -937,7 +937,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
       const report = formatNexifyStatusReport({
         session,
         health,
-        shellSessionId,
+        shellSessionId: shellSessionId ?? undefined,
         viewMode,
         messageCount: snapshot.length,
       });
@@ -1294,7 +1294,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         }}
       />
 
-      <header className="relative z-10 px-3 pb-2 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] border-b border-border/50 backdrop-blur-sm bg-background/30">
+      <header className="relative z-20 px-3 pb-2 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] border-b border-border/50 backdrop-blur-sm bg-background/30">
         <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1.5">
           {/* View Mode Toggle (Chat / Terminal / Files / System) */}
           <div className="flex items-center bg-secondary/80 rounded-lg p-0.5 border border-border/30 shadow-lg h-7 mr-2">
@@ -1366,6 +1366,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           {/* Row 1: Active Model Selector, Configuration, Export */}
           <div className="relative">
             <Button
+              data-testid="model-selector-trigger"
               className="btn-3d btn-glow gap-1 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm border border-border/30 shadow-lg text-[10px] px-2 py-1 h-7"
               onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
             >
@@ -1375,7 +1376,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               />
             </Button>
             {modelDropdownOpen && (
-              <div className="dropdown-menu">
+              <div className="dropdown-menu" data-testid="model-selector-menu">
                 <button
                   className="dropdown-item text-[10px] w-full text-left"
                   onClick={() => {
@@ -1731,7 +1732,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             )}
 
             {/* Clean input layout: N | Microphone | Input Field | Send Button - height increased by 5px */}
-            <div className="relative input-3d bg-gradient-to-br from-secondary/70 via-secondary/60 to-secondary/50 backdrop-blur-xl rounded-2xl border border-border/50 p-[calc(1rem+2.5px)] shadow-2xl flex items-center gap-3 min-h-[calc(76px+5px)]">
+            <div className="relative input-3d bg-gradient-to-br from-secondary/70 via-secondary/60 to-secondary/50 backdrop-blur-xl rounded-2xl border border-border/50 p-[calc(1rem+2.5px)] shadow-2xl flex items-center gap-3 min-h-[124px]">
               {isTyping && (
                 <svg className="absolute inset-0 w-full h-full pointer-events-none rounded-2xl" style={{ zIndex: 10, overflow: 'visible' }}>
                   <defs>
@@ -1803,6 +1804,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <textarea
                 ref={textareaRef}
                 value={input}
+                rows={3}
                 placeholder={getInputPlaceholder(inputMode)}
                 onChange={(e) => {
                   setInput(e.target.value)
@@ -1822,7 +1824,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                   }
                 }}
                 aria-label="Správa"
-                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground text-base min-h-[44px] font-normal py-2"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-foreground text-base min-h-[80px] font-normal py-3 leading-6"
               />
 
               {/* Send Button (Right) */}

@@ -138,6 +138,13 @@ test('#282 footer input area within viewport bottom', async ({ page }) => {
   if (box) expect(box.y + box.height).toBeLessThanOrEqual(vh + 2);
 });
 
+test('#282b chat composer is tall enough for multiline text', async ({ page }) => {
+  const textarea = page.getByLabel('Správa');
+  const box = await textarea.boundingBox();
+  expect(box).toBeTruthy();
+  expect(box!.height).toBeGreaterThanOrEqual(80);
+});
+
 test('#283 safe-area CSS variables defined', async ({ page }) => {
   const top = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top')
