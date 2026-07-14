@@ -78,10 +78,10 @@ export const TEST_CATEGORIES = [
     name: 'iPhone 17 Air Static',
     script: 'scripts/test-iphone17-air-300.mjs',
     npm: 'test:iphone17-static',
-    tests: 250,
+    tests: 260,
     ci: true,
     iphonePull: true,
-    description: '250 source-pattern tests across 8 iPhone modules (#001–#250)',
+    description: '260 source-pattern tests across 8 iPhone modules (#001–#260)',
   },
   {
     id: 'iphone17-live',

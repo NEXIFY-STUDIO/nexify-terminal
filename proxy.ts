@@ -79,8 +79,10 @@ export function proxy(request: NextRequest) {
       if (ip.trim()) allowedIps.push(ip.trim());
     });
 
-    // Auto-allow any Tailscale IPv4/IPv6 or local private network IP (LAN/Wi-Fi)
-    if (isPrivateIp(normalizedIp) || normalizedIp.startsWith('100.') || normalizedIp.startsWith('fd7a:115c:a1e0:')) {
+    // Auto-allow Tailscale CGNAT (100.x) and Tailscale IPv6 only — not general LAN (192.168.x)
+    const isTailscaleIp =
+      normalizedIp.startsWith('100.') || normalizedIp.startsWith('fd7a:115c:a1e0:');
+    if (isTailscaleIp) {
       allowedIps.push(normalizedIp);
     }
 

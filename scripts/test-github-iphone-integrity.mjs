@@ -228,9 +228,9 @@ test('31 — integrity suite count ≥ 75', () => {
   assert(/75 Assertions/.test(integrity), 'integrity count outdated');
 });
 
-test('32 — iPhone index validates 250 static', () => {
+test('32 — iPhone index validates 260 static', () => {
   const idx = read('scripts/iphone17-tests/index.mjs');
-  assert(idx.includes('STATIC_COUNT !== 250'), 'missing 250 guard');
+  assert(idx.includes('STATIC_COUNT !== 260'), 'missing 260 guard');
 });
 
 test('33 — playwright iPhone device profile', () => {

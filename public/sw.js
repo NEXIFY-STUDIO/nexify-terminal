@@ -2,9 +2,16 @@ const CACHE_NAME = 'nexify-cache-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/apple-icon.png',
+  '/favicon.ico',
+  '/favicon-16x16.png',
+  '/favicon-32x32.png',
+  '/icon-dark-32x32.png',
+  '/icon-light-32x32.png',
   '/icons/icon-1024x1024.png',
-  '/icon.svg',
-  '/favicon.ico'
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/icon-512x512-maskable.png',
 ];
 
 // Install Event

@@ -6,7 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 
 const manifestPath = path.join(rootDir, 'public/manifest.json');
-const iconPath = path.join(rootDir, 'public/icons/icon-1024x1024.png');
+const iconPaths = [
+  path.join(rootDir, 'public/icons/icon-192x192.png'),
+  path.join(rootDir, 'public/icons/icon-512x512.png'),
+  path.join(rootDir, 'public/icons/icon-512x512-maskable.png'),
+  path.join(rootDir, 'public/icons/icon-1024x1024.png'),
+  path.join(rootDir, 'public/apple-icon.png'),
+  path.join(rootDir, 'public/favicon.ico'),
+];
 const swPath = path.join(rootDir, 'public/sw.js');
 const challengeRoutePath = path.join(rootDir, 'app/api/auth/challenge/route.ts');
 const verifyRoutePath = path.join(rootDir, 'app/api/auth/verify/route.ts');
@@ -45,16 +52,21 @@ const manifestAssertions = [
   { desc: 'Display "standalone"', pattern: /"display":\s*"standalone"/ },
   { desc: 'Status bar style translucency', pattern: /"apple-mobile-web-app-status-bar-style":\s*"black-translucent"/ },
   { desc: 'Theme color black', pattern: /"theme_color":\s*"#000000"/ },
-  { desc: 'Icons reference high-res png', pattern: /"src":\s*"\/icons\/icon-1024x1024.png"/ }
+  { desc: 'Icons reference high-res png', pattern: /"src":\s*"\/icons\/icon-1024x1024.png"/ },
+  { desc: 'Icons reference 192 png', pattern: /"src":\s*"\/icons\/icon-192x192.png"/ },
+  { desc: 'Icons reference 512 png', pattern: /"src":\s*"\/icons\/icon-512x512.png"/ },
+  { desc: 'Icons reference maskable 512 png', pattern: /"src":\s*"\/icons\/icon-512x512-maskable.png"/ }
 ];
 checkFile(manifestPath, 'PWA manifest.json', manifestAssertions);
 
-// 2. Verify high-resolution icon exists
-if (fs.existsSync(iconPath)) {
-  console.log(`✅ High-resolution icon matches: public/icons/icon-1024x1024.png`);
-} else {
-  console.error(`❌ Missing PWA icon at ${iconPath}`);
-  failed = true;
+// 2. Verify icon assets exist
+for (const icon of iconPaths) {
+  if (fs.existsSync(icon)) {
+    console.log(`✅ PWA icon exists: ${path.relative(rootDir, icon)}`);
+  } else {
+    console.error(`❌ Missing PWA icon at ${icon}`);
+    failed = true;
+  }
 }
 
 // 3. Audit sw.js

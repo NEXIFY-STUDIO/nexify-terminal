@@ -18,7 +18,7 @@ const rawModules = [
   mod08,
 ];
 
-/** Assign sequential IDs #001–#250 and validate count. */
+/** Assign sequential IDs #001–#260 and validate count. */
 let nextId = 1;
 const modules = rawModules.map((mod) => {
   const tests = mod.tests.map((t) => ({ ...t, id: nextId++ }));
@@ -26,8 +26,8 @@ const modules = rawModules.map((mod) => {
 });
 
 const STATIC_COUNT = nextId - 1;
-if (STATIC_COUNT !== 250) {
-  throw new Error(`Expected 250 static tests, got ${STATIC_COUNT}. Adjust module test counts.`);
+if (STATIC_COUNT !== 260) {
+  throw new Error(`Expected 260 static tests, got ${STATIC_COUNT}. Adjust module test counts.`);
 }
 
 export { modules, STATIC_COUNT };

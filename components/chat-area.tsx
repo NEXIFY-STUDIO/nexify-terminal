@@ -58,6 +58,38 @@ import {
 } from "@/lib/operator/sessionExport.mjs"
 import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
 
+let persistedShellSessionId: string | null = null
+let shellSessionCleanupTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelShellSessionCleanup() {
+  if (shellSessionCleanupTimer) {
+    clearTimeout(shellSessionCleanupTimer)
+    shellSessionCleanupTimer = null
+  }
+}
+
+function scheduleShellSessionCleanup(sessionId: string) {
+  cancelShellSessionCleanup()
+  shellSessionCleanupTimer = setTimeout(() => {
+    shellSessionCleanupTimer = null
+    if (persistedShellSessionId === sessionId) {
+      persistedShellSessionId = null
+    }
+    fetch(`/api/shell?path=sessions/${sessionId}`, { method: 'DELETE' }).catch(() => {})
+  }, 2000)
+}
+
+async function verifyShellSession(sessionId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/shell?path=sessions/${sessionId}`)
+    if (!res.ok) return false
+    const data = await res.json()
+    return data.status === 'active'
+  } catch {
+    return false
+  }
+}
+
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => {
   return (
     <svg className={`chevron ${expanded ? "" : "collapsed"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -798,64 +830,96 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     let activeSessionId: string | null = null;
     let eventSource: EventSource | null = null;
     let isCancelled = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    cancelShellSessionCleanup();
+
+    function connectStream(sessionId: string) {
+      if (isCancelled) return;
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      eventSource = new EventSource(`/api/shell?path=sessions/${sessionId}/stream`);
+      eventSource.onmessage = (event) => {
+        try {
+          const streamData = JSON.parse(event.data);
+          if (streamData.type === 'output' && streamData.chunk) {
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              if (last && last.type === 'output') {
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, content: last.content + streamData.chunk }
+                ];
+              } else {
+                return [
+                  ...prev,
+                  { id: Math.random().toString(), role: 'system', content: streamData.chunk, type: 'output' }
+                ];
+              }
+            });
+          } else if (streamData.type === 'exit') {
+            setIsExecutingCommand(false);
+          }
+        } catch (err) {
+          console.error('SSE JSON parse error:', err);
+        }
+      };
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        if (isCancelled) return;
+        reconnectTimer = setTimeout(async () => {
+          reconnectTimer = null;
+          if (isCancelled) return;
+          const alive = await verifyShellSession(sessionId);
+          if (alive) {
+            connectStream(sessionId);
+          } else {
+            void initShell();
+          }
+        }, 1500);
+      };
+    }
 
     async function initShell() {
       try {
-        const res = await fetch('/api/shell?path=sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cwd: '/Users/erikbabcan',
-            cols: 100,
-            rows: 30
-          })
-        });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          throw new Error(`Failed to create PTY session: ${res.status} ${res.statusText}. Response: ${errText}`);
-        }
-        const data = await res.json();
-        if (isCancelled) {
-          if (data.sessionId) {
-            fetch(`/api/shell?path=sessions/${data.sessionId}`, { method: 'DELETE' }).catch(() => {});
+        let sessionId = persistedShellSessionId;
+        if (sessionId && await verifyShellSession(sessionId)) {
+          // Reuse existing session across React Strict Mode remounts / brief outages.
+        } else {
+          const res = await fetch('/api/shell?path=sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cwd: '/Users/erikbabcan',
+              cols: 100,
+              rows: 30
+            })
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`Failed to create PTY session: ${res.status} ${res.statusText}. Response: ${errText}`);
           }
-          return;
-        }
-        if (data.sessionId) {
-          activeSessionId = data.sessionId;
-          setShellSessionId(data.sessionId);
-          
-          // Connect to SSE stream
-          eventSource = new EventSource(`/api/shell?path=sessions/${data.sessionId}/stream`);
-          eventSource.onmessage = (event) => {
-            try {
-              const streamData = JSON.parse(event.data);
-              if (streamData.type === 'output' && streamData.chunk) {
-                setMessages((prev) => {
-                  const last = prev[prev.length - 1];
-                  if (last && last.type === 'output') {
-                    return [
-                      ...prev.slice(0, -1),
-                      { ...last, content: last.content + streamData.chunk }
-                    ];
-                  } else {
-                    return [
-                      ...prev,
-                      { id: Math.random().toString(), role: 'system', content: streamData.chunk, type: 'output' }
-                    ];
-                  }
-                });
-              } else if (streamData.type === 'exit') {
-                setIsExecutingCommand(false);
-              }
-            } catch (err) {
-              console.error('SSE JSON parse error:', err);
+          const data = await res.json();
+          if (isCancelled) {
+            if (data.sessionId) {
+              fetch(`/api/shell?path=sessions/${data.sessionId}`, { method: 'DELETE' }).catch(() => {});
             }
-          };
-          eventSource.onerror = () => {
-            if (eventSource) eventSource.close();
-          };
+            return;
+          }
+          if (!data.sessionId) return;
+          sessionId = data.sessionId;
+          persistedShellSessionId = sessionId;
         }
+
+        if (!sessionId) return;
+        activeSessionId = sessionId;
+        setShellSessionId(sessionId);
+        connectStream(sessionId);
       } catch (err) {
         console.error('PTY Init Error:', err);
       }
@@ -865,11 +929,12 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     return () => {
       isCancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (eventSource) {
         eventSource.close();
       }
       if (activeSessionId) {
-        fetch(`/api/shell?path=sessions/${activeSessionId}`, { method: 'DELETE' }).catch(() => {});
+        scheduleShellSessionCleanup(activeSessionId);
       }
     };
   }, []);

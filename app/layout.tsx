@@ -26,16 +26,37 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: "/favicon.ico",
+        sizes: "any",
+      },
+      {
         url: "/icon-light-32x32.png",
         media: "(prefers-color-scheme: light)",
+        type: "image/png",
       },
       {
         url: "/icon-dark-32x32.png",
         media: "(prefers-color-scheme: dark)",
+        type: "image/png",
+      },
+      {
+        url: "/icons/icon-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/apple-icon.png",
+        sizes: "180x180",
+        type: "image/png",
       },
       {
         url: "/icon.svg",
         type: "image/svg+xml",
+      },
+      {
+        url: "/icons/icon-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
       },
     ],
     apple: "/icons/icon-1024x1024.png",

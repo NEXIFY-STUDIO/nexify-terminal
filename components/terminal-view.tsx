@@ -14,6 +14,42 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
     let isDestroyed = false
     let eventSource: EventSource | null = null
     let handleResize: (() => void) | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+    function connectStream(term: any) {
+      if (isDestroyed) return
+      if (eventSource) {
+        eventSource.close()
+        eventSource = null
+      }
+      eventSource = new EventSource(`/api/shell?path=sessions/${sessionId}/stream`)
+
+      eventSource.onmessage = (event) => {
+        if (isDestroyed) return
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === "output" && data.chunk) {
+            term.write(data.chunk)
+          }
+        } catch (err) {
+          console.error("Failed to parse SSE in xterm:", err)
+        }
+      }
+
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close()
+          eventSource = null
+        }
+        if (isDestroyed) return
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null
+          if (!isDestroyed && terminalRef.current) {
+            connectStream(terminalRef.current)
+          }
+        }, 1500)
+      }
+    }
 
     async function initTerminal() {
       // Dynamically import xterm to prevent SSR issues in Next.js
@@ -91,30 +127,14 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       })
 
       // Establish EventSource connection to stream terminal stdout/stderr back into xterm
-      eventSource = new EventSource(`/api/shell?path=sessions/${sessionId}/stream`)
-      
-      eventSource.onmessage = (event) => {
-        if (isDestroyed) return
-        try {
-          const data = JSON.parse(event.data)
-          if (data.type === "output" && data.chunk) {
-            term.write(data.chunk)
-          }
-        } catch (err) {
-          console.error("Failed to parse SSE in xterm:", err)
-        }
-      }
-
-      eventSource.onerror = () => {
-        // Retry connection or close if session died
-        if (eventSource) eventSource.close()
-      }
+      connectStream(term)
     }
 
     initTerminal()
 
     return () => {
       isDestroyed = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
       if (eventSource) eventSource.close()
       if (terminalRef.current) {
         terminalRef.current.dispose()

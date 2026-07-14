@@ -173,8 +173,9 @@ test('#287 tab buttons not clipped right edge', async ({ page }) => {
   expect(box!.x + box!.width).toBeLessThanOrEqual(iw + 2);
 });
 
-test('#288 workspace heading visible', async ({ page }) => {
-  await expect(page.getByRole('heading').first()).toBeVisible();
+test('#288 workspace status strip visible', async ({ page }) => {
+  await expect(page.locator('.operator-status')).toBeVisible();
+  await expect(page.locator('.operator-status')).toContainText('Nexify');
 });
 
 // --- WebGL canvas #289–294 ---

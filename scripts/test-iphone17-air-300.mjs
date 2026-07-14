@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * iPhone 17 Air Master Test Suite — 300 tests (250 static + 50 live Playwright)
+ * iPhone 17 Air Master Test Suite — 310 tests (260 static + 50 live Playwright)
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -13,7 +13,7 @@ const args = process.argv.slice(2);
 const staticOnly = args.includes('--static-only');
 const liveOnly = args.includes('--live-only');
 
-console.log('📱 iPhone 17 Air Test Suite — 300 Tests (Hybrid)\n');
+console.log('📱 iPhone 17 Air Test Suite — 310 Tests (Hybrid)\n');
 console.log('='.repeat(54));
 
 let totalPassed = 0;
@@ -35,7 +35,7 @@ async function runStatic() {
 }
 
 function runLive() {
-  console.log(`\n[Phase 2/2] Live Playwright Tests (#251–#300)\n`);
+  console.log(`\n[Phase 2/2] Live Playwright Tests (#261–#310)\n`);
 
   const configPath = path.join(__dirname, 'iphone17-playwright/playwright.config.ts');
   const pwBin = path.join(ROOT_DIR, 'node_modules', '.bin', 'playwright');
