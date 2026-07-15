@@ -20,7 +20,7 @@ const filesToTest = {
   aiProxy: path.join(rootDir, 'services/ai-proxy/ai-proxy.mjs'),
   sessionExport: path.join(rootDir, 'lib/operator/sessionExport.mjs'),
   voiceInput: path.join(rootDir, 'lib/operator/voiceInput.mjs'),
-  sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.mjs'),
+  sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.ts'),
 };
 
 console.log('🔍 Running Master Integrity Test Suite (75 Assertions)...\n');

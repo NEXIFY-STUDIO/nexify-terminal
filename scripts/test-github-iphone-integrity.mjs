@@ -90,7 +90,7 @@ test('08 — operator lib modules v1–v10', () => {
     'lib/operator/sessionContext.mjs',
     'lib/operator/sessionReset.mjs',
     'lib/operator/sessionStatus.mjs',
-    'lib/operator/sessionHelp.mjs',
+    'lib/operator/sessionHelp.ts',
     'lib/operator/followUpPrompt.mjs',
     'lib/operator/voiceInput.mjs',
     'lib/operator/sessionExport.mjs',

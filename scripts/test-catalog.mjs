@@ -31,7 +31,7 @@ export const TEST_CATEGORIES = [
     tests: 4,
     ci: true,
     iphonePull: false,
-    description: 'Passcode 2366 verification flow',
+    description: 'Passcode verification flow',
   },
   {
     id: 'operator',

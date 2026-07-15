@@ -11,6 +11,9 @@ package-lock.json
 # production
 /build
 
+# compiled native artifacts (e.g. Swift statusbar helper)
+.build/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

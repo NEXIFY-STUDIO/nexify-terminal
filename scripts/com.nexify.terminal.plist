@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nexify.terminal</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>scripts/dev-all.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+    <key>StandardOutPath</key>
+    <string>launchd-out.log</string>
+    <key>StandardErrorPath</key>
+    <string>launchd-err.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/erikbabcan</string>
+        <key>PATH</key>
+        <string>/Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main/node_modules/.bin:/Users/erikbabcan/.nvm/versions/node/v24.15.0/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

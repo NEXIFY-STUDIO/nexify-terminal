@@ -15,7 +15,7 @@ Tento dokument slúži ako technický blueprint a auditný manuál pre AI agento
 - **Master Integrity Test (`scripts/test-integrity-suite.mjs`):** `✅ PASSED`. Všetkých **60/60 integrity assertions** prebehlo úspešne a overilo základnú programovú štruktúru 11 kritických súborov.
 - **Security Audit (`scripts/test-security.mjs`):** `✅ PASSED`. Overená sila API kľúčov, rate limiting, HSTS a regexy na obranu pred XSS/SQLi.
 - **Integrácia Live Testov (Files, Sysinfo, PWA, Tailscale):** `⚠️ NEUPLNÁ (SANDBOX LIMIT)`. Skripty v `scripts/` sú síce správne upravené na port `3322`, no ich sieťová časť zlyháva so statusom `EPERM` priamo v našom CLI kvôli sandboxovej reštrikcii pre socketové volania na localhost (`connect EPERM 127.0.0.1:3322`). 
-- **Verifikácia v Prehliadači:** `✅ OVERENÁ`. Browser subagent potvrdil, že adresa `http://localhost:3322` je aktívna a reaguje na zadanie PIN kódu `2366` úspešným prihlásením do prostredia.
+- **Verifikácia v Prehliadači:** `✅ OVERENÁ`. Browser subagent potvrdil, že adresa `http://localhost:3322` je aktívna a reaguje na zadanie PIN kódu `0000` úspešným prihlásením do prostredia.
 
 ---
 
@@ -23,7 +23,7 @@ Tento dokument slúži ako technický blueprint a auditný manuál pre AI agento
 
 1. **Authentication Guard (Face ID / PIN Passcode)**
    - Vynucuje prihlásenie pred sprístupnením workspace.
-   - Poskytuje číselnú klávesnicu pre zadanie PIN (predvolený: `2366`).
+   - Poskytuje číselnú klávesnicu pre zadanie PIN (predvolený: `0000`).
    - Pokúša sa spustiť biometrické overenie cez WebAuthn API (`navigator.credentials.get`).
    - Premium lock/logout mechanizmus v pravom hornom rohu rozhrania.
 

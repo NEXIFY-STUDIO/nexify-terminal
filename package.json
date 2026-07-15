@@ -28,7 +28,7 @@
     "test:lovable-editor-split": "node scripts/test-lovable-editor-split.mjs",
     "test:nexify-operator": "node scripts/test-nexify-operator.mjs",
     "test:nexify-persona": "node scripts/test-nexify-persona.mjs",
-    "test:operator-ux": "node scripts/test-operator-ux.mjs",
+    "test:operator-ux": "node --experimental-strip-types scripts/test-operator-ux.mjs",
     "test:github-iphone": "node scripts/test-github-iphone-integrity.mjs",
     "test:catalog": "node -e \"import('./scripts/test-catalog.mjs').then(m=>m.printCatalogSummary())\"",
     "test:all": "node scripts/test-integrity-suite.mjs && node scripts/test-security.mjs && node scripts/test-pin.mjs && node scripts/test-nexify-operator.mjs && node scripts/test-nexify-persona.mjs && node scripts/test-operator-ux.mjs",

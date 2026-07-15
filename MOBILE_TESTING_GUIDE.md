@@ -3,7 +3,7 @@
 **Device:** iPhone 17 Air · 402×874px · Dynamic Island · DPR 3.0  
 **Projekt:** `/Users/erikbabcan/aaa-terminalnexify2-with-v-main`  
 **iPhone URL:** `http://100.103.0.38:3322` (Tailscale → Mac)  
-**PIN:** `2366`  
+**PIN:** `0000`  
 **Posledná aktualizácia:** 2026-07-06 · E2E 451/451 ✅
 
 ---
@@ -45,7 +45,7 @@ pnpm install && npx playwright install chromium
 | Viewport & Display | #001–#040 | 40 | viewport meta, overflow lock |
 | PWA & Standalone | #041–#075 | 35 | manifest, SW, icons |
 | Safe Area & Dynamic Island | #076–#105 | 30 | env(safe-area-inset-*) |
-| Lockscreen & Auth | #106–#140 | 35 | PIN 2366, WebAuthn |
+| Lockscreen & Auth | #106–#140 | 35 | PIN 0000, WebAuthn |
 | Gestures & Navigation | #141–#180 | 40 | swipe tabs, long-press |
 | Haptics & Audio | #181–#205 | 25 | vibrate + Web Audio fallback |
 | WebGL & Particles | #206–#240 | 35 | orb, dpr throttle |
@@ -61,7 +61,7 @@ Vyžaduje bežiaci `pnpm dev:all` na `:3322`.
 
 1. Tailscale **ON** na iPhone aj Macu  
 2. Safari → `http://100.103.0.38:3322`  
-3. PIN **2366**  
+3. PIN **0000**  
 4. **Zdieľať → Pridať na plochu** (PWA standalone)  
 5. Otestuj: swipe záložky, chat input, tap-to-run `$` chips, voice (drž mikrofón), `export`
 
@@ -101,7 +101,7 @@ scrollY/X:   0
 - [ ] `pnpm run test:e2e` green na Macu  
 - [ ] Health 200: `:3322/api/health`, `:3021/health`, `:8788/health`  
 - [ ] PWA na ploche otvorí standalone (bez Safari chrome)  
-- [ ] PIN 2366 odomkne lockscreen  
+- [ ] PIN 0000 odomkne lockscreen  
 - [ ] Swipe: Chat ↔ Terminal ↔ Files ↔ System  
 - [ ] Chat: text → AI chips → tap `$` beží na Macu  
 - [ ] Voice: drž mikrofón → text → Enter  

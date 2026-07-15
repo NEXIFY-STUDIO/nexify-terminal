@@ -20,7 +20,7 @@ export const NEXIFY_URLS = {
   healthUi: "http://127.0.0.1:3322/api/health",
   healthHack: "http://127.0.0.1:3021/health",
   healthAi: "http://127.0.0.1:8788/health",
-  pin: "2366",
+  pin: "0000",
 } as const
 
 export type ManualSection = {
@@ -41,6 +41,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "macOS Terminál → launchctl, testy, údržba stacku",
       "Badge AI / $ / / vľavo od mikrofónu → prepína režim vstupu",
       "clear (samostatne, bez $) → vymaže SESSION pamäť + reštart appky",
+      "restart (samostatne, bez $) → reštart Mac stacku cez launchd",
       "status (samostatne, bez $) → SESSION + health bez mazania",
       "help / ? / pomoc → stručný návod v chate",
       "export (samostatne) → SESSION log ako Markdown (share / clipboard)",
@@ -102,7 +103,7 @@ export const NEXIFY_MANUAL_SECTIONS: ManualSection[] = [
       "✓ help / status / clear operátorské príkazy",
       "✓ Shell $ / / + tap-to-run + auto follow-up",
       "✓ Terminal, Files, System, Insolvency",
-      "✓ PIN 2366, Tailscale lockdown (verejné IP → 403)",
+      "✓ PIN (pozri .env.local), Tailscale lockdown (verejné IP → 403)",
       "✓ Export Markdown — príkaz export alebo Export menu (MD)",
       "✗ Export PDF/JSON — zatiaľ stub",
       "✓ Mikrofón — press-and-hold speech-to-text (sk-SK / en-US)",

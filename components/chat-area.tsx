@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Copy,
   Clipboard,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useRef } from "react"
@@ -42,8 +43,14 @@ import {
   isStatusCommand,
   fetchNexifyServiceHealth,
   formatNexifyStatusReport,
+  isNexifyStackHealthy,
 } from "@/lib/operator/sessionStatus.mjs"
-import { isHelpCommand, formatNexifyHelpReport } from "@/lib/operator/sessionHelp.mjs"
+import {
+  isRestartServerCommand,
+  requestNexifyServerRestart,
+  formatRestartServerReport,
+} from "@/lib/operator/sessionRestart.mjs"
+import { isHelpCommand, formatNexifyHelpReport } from "@/lib/operator/sessionHelp"
 import {
   detectVoiceSupport,
   resolveSpeechLanguage,
@@ -275,6 +282,9 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   const [shellSessionId, setShellSessionId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat'>('chat')
   const [isExecutingCommand, setIsExecutingCommand] = useState(false)
+  const [serverHealthOk, setServerHealthOk] = useState<boolean | null>(null)
+  const [serverHealthFailures, setServerHealthFailures] = useState(0)
+  const [isRestartingServer, setIsRestartingServer] = useState(false)
   const messagesRef = useRef(messages)
   const pendingShellFollowUpRef = useRef<string | null>(null)
   const wasExecutingRef = useRef(false)
@@ -810,6 +820,91 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     };
   }, [messages, isExecutingCommand, input]);
 
+  const runServerHealthCheck = async () => {
+    try {
+      const health = await fetchNexifyServiceHealth();
+      const ok = isNexifyStackHealthy(health);
+      setServerHealthOk(ok);
+      setServerHealthFailures((prev) => (ok ? 0 : prev + 1));
+      return ok;
+    } catch {
+      setServerHealthOk(false);
+      setServerHealthFailures((prev) => prev + 1);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    void runServerHealthCheck();
+    const interval = setInterval(() => {
+      void runServerHealthCheck();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRestartServer = async (options: { silent?: boolean } = {}) => {
+    if (isRestartingServer) return;
+
+    triggerHaptic('heavy');
+    setInput("");
+    setIsRestartingServer(true);
+
+    if (!options.silent) {
+      setMessages((prev) => [
+        ...prev,
+        { id: Math.random().toString(), role: 'user', content: 'restart', type: 'chat' },
+      ]);
+    }
+
+    try {
+      const result = await requestNexifyServerRestart();
+      if (!options.silent) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(),
+            role: 'assistant',
+            content: formatRestartServerReport(result),
+            type: 'chat',
+          },
+        ]);
+      }
+      toast({
+        title: 'Reštartujem Nexify stack',
+        description: 'launchd reštartuje služby (~15 s). UI sa obnoví.',
+        duration: 5000,
+      });
+      setServerHealthFailures(0);
+      window.setTimeout(() => {
+        restartNexifyApp();
+      }, 15_000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Reštart zlyhal';
+      triggerHaptic('error');
+      toast({
+        title: 'Reštart zlyhal',
+        description: message,
+        variant: 'destructive',
+        duration: 4000,
+      });
+      if (!options.silent) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(),
+            role: 'assistant',
+            content: formatRestartServerReport({ error: message }),
+            type: 'chat',
+          },
+        ]);
+      }
+    } finally {
+      setIsRestartingServer(false);
+    }
+  };
+
+  const showServerDownBanner = serverHealthFailures >= 2 && !isRestartingServer;
+
   const isTyping = input.length > 0;
   const inputMode = detectInputMode(input);
   const sessionFields = buildSessionFields(messages);
@@ -1153,7 +1248,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     const report = formatNexifyHelpReport({
       iphoneUi: 'http://100.103.0.38:3322',
-      pin: '2366',
+      pin: process.env.NEXT_PUBLIC_PASSCODE,
     });
 
     setMessages((prev) => [
@@ -1169,7 +1264,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     setExportDropdownOpen(false);
 
     const snapshot = messagesRef.current;
-    const markdown = formatSessionMarkdown(snapshot);
+    const markdown = formatSessionMarkdown(snapshot, { pin: process.env.NEXT_PUBLIC_PASSCODE });
 
     setMessages((prev) => [
       ...prev,
@@ -1243,6 +1338,11 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
     if (isStatusCommand(trimmed)) {
       void handleStatusReport();
+      return;
+    }
+
+    if (isRestartServerCommand(trimmed)) {
+      void handleRestartServer();
       return;
     }
 
@@ -1763,12 +1863,37 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           <span>Nexify :3322 · :3021 · :8788</span>
           <span className="mx-1.5 text-border">·</span>
           <span className="text-zinc-400">last: {lastCommandPreview}</span>
+          {serverHealthOk === false && (
+            <>
+              <span className="mx-1.5 text-border">·</span>
+              <span className="text-amber-400/90">stack degraded</span>
+            </>
+          )}
           {sessionFields.failedLast && (
             <>
               <span className="mx-1.5 text-border">·</span>
               <span className="text-red-400/90">failed</span>
             </>
           )}
+        </div>
+      )}
+
+      {showServerDownBanner && (
+        <div className="relative z-20 px-4 py-2 border-b border-amber-500/30 bg-amber-500/10 backdrop-blur-sm flex items-center justify-between gap-3">
+          <div className="font-mono text-[10px] text-amber-200/90 leading-snug">
+            Server neodpovedá alebo je zamrznutý. Reštart stacku cez launchd.
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isRestartingServer}
+            onClick={() => void handleRestartServer({ silent: true })}
+            className="btn-3d shrink-0 h-7 px-2 text-[10px] border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${isRestartingServer ? 'animate-spin' : ''}`} />
+            Reštartovať
+          </Button>
         </div>
       )}
 

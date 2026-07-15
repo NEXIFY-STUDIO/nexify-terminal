@@ -23,8 +23,13 @@ import {
 import {
   isStatusCommand,
   formatNexifyStatusReport,
+  isNexifyStackHealthy,
 } from '../lib/operator/sessionStatus.mjs';
-import { isHelpCommand, formatNexifyHelpReport } from '../lib/operator/sessionHelp.mjs';
+import {
+  isRestartServerCommand,
+  formatRestartServerReport,
+} from '../lib/operator/sessionRestart.mjs';
+import { isHelpCommand, formatNexifyHelpReport } from '../lib/operator/sessionHelp.ts';
 import {
   detectVoiceSupport,
   resolveSpeechLanguage,
@@ -233,7 +238,8 @@ test('24 — formatNexifyStatusReport includes SESSION fields', () => {
   assert(report.includes('last_command: df -h'), 'last command');
   assert(report.includes('failed_last: true'), 'failed flag');
   assert(report.includes('mistral'), 'ai provider');
-  assert(report.includes('clear ='), 'clear tip');
+  assert(report.includes('hack-api'), 'hack api line');
+  assert(report.includes('restart ='), 'restart tip');
 });
 
 test('25 — chat-area wires status report', () => {
@@ -257,7 +263,7 @@ test('27 — formatNexifyHelpReport lists operator commands', () => {
   assert(report.includes('status'), 'status cmd');
   assert(report.includes('clear'), 'clear cmd');
   assert(/tap-to-run/i.test(report), 'tap-to-run');
-  assert(report.includes('2366'), 'pin');
+  assert(report.includes('0000'), 'pin');
 });
 
 test('28 — chat-area wires help report', () => {
@@ -379,11 +385,11 @@ test('41 — formatSessionMarkdown parses INTENT ACTION RESULT', () => {
 
 test('42 — redactExportSecrets removes env keys and PIN', () => {
   const redacted = redactExportSecrets(
-    'MISTRAL_API_KEY_1=sk-abc123456789\nPIN: 2366\npasscode 2366',
+    'MISTRAL_API_KEY_1=sk-abc123456789\nPIN: 4821\npasscode 4821',
   );
   assert(redacted.includes('[REDACTED]'), 'redacted marker');
   assert(!redacted.includes('sk-abc123456789'), 'api key removed');
-  assert(!redacted.includes('2366'), 'pin removed');
+  assert(!redacted.includes('4821'), 'pin removed');
 });
 
 test('43 — parseOperatorSections extracts structured AI blocks', () => {
@@ -446,7 +452,56 @@ test('47 — chat-area wires export command and markdown menu', () => {
   assert(src.includes('void handleExportSession()'), 'menu wired');
 });
 
+test('48 — isRestartServerCommand exact standalone match', () => {
+  assert(isRestartServerCommand('restart'), 'restart');
+  assert(isRestartServerCommand('  REŠTART  '), 'reštart');
+  assert(isRestartServerCommand('restart server'), 'restart server');
+  assert(!isRestartServerCommand('$ restart'), 'no shell prefix');
+  assert(!isRestartServerCommand('restarting'), 'no partial');
+});
+
+test('49 — isNexifyStackHealthy checks all three services', () => {
+  assert(
+    isNexifyStackHealthy({
+      ui: { status: 'ok' },
+      hackApi: { status: 'ok' },
+      ai: { status: 'ok' },
+    }),
+    'all ok',
+  );
+  assert(
+    !isNexifyStackHealthy({
+      ui: { status: 'ok' },
+      hackApi: { status: 'error' },
+      ai: { status: 'ok' },
+    }),
+    'hack down',
+  );
+});
+
+test('50 — formatRestartServerReport success + error', () => {
+  const ok = formatRestartServerReport({ label: 'com.nexify.terminal' });
+  assert(ok.includes('NEXIFY RESTART'), 'header');
+  assert(ok.includes('launchd'), 'launchd mention');
+  const err = formatRestartServerReport({ error: 'cooldown' });
+  assert(err.includes('cooldown'), 'error body');
+});
+
+test('51 — chat-area wires server restart + watchdog banner', () => {
+  const src = fs.readFileSync(chatAreaPath, 'utf8');
+  assert(src.includes('isRestartServerCommand'), 'missing restart detector');
+  assert(src.includes('handleRestartServer'), 'missing restart handler');
+  assert(src.includes('requestNexifyServerRestart'), 'missing restart API call');
+  assert(src.includes('showServerDownBanner'), 'missing watchdog banner');
+  const restartLib = fs.readFileSync(path.join(rootDir, 'lib/operator/sessionRestart.mjs'), 'utf8');
+  assert(restartLib.includes('/api/restart'), 'missing restart endpoint in client lib');
+  const healthRoute = fs.readFileSync(path.join(rootDir, 'app/api/health/route.ts'), 'utf8');
+  assert(healthRoute.includes('hackApi'), 'health missing hack-api probe');
+  const restartRoute = fs.readFileSync(path.join(rootDir, 'app/api/restart/route.ts'), 'utf8');
+  assert(restartRoute.includes('launchctl'), 'restart route missing launchctl');
+});
+
 console.log('\n==================================================');
-console.log(`Operator UX: ${passed}/48 passed`);
+console.log(`Operator UX: ${passed}/52 passed`);
 console.log('==================================================');
 process.exit(failed > 0 ? 1 : 0);
