@@ -29,7 +29,9 @@ interface FileItem {
 }
 
 export function FileExplorer() {
-  const [currentPath, setCurrentPath] = useState<string>("/Users/erikbabcan")
+  const [currentPath, setCurrentPath] = useState<string>(
+    "/Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main"
+  )
   const [files, setFiles] = useState<FileItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -211,7 +213,7 @@ export function FileExplorer() {
 
   // Helper for icons based on file type
   const getFileIcon = (file: FileItem) => {
-    if (file.isDirectory) return <Folder className="w-4 h-4 text-cyan-400 shrink-0" />
+    if (file.isDirectory) return <Folder className="w-4 h-4 text-accent shrink-0" />
     const ext = file.name.split(".").pop()?.toLowerCase() || ""
     if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext)) {
       return <ImageIcon className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -236,9 +238,13 @@ export function FileExplorer() {
           <Button
             variant="ghost"
             size="icon"
-            className="btn-3d h-7 w-7 rounded-lg text-muted-foreground hover:text-white"
+            className="active:scale-[0.98] h-7 w-7 rounded-lg text-muted-foreground hover:text-white"
             onClick={handleGoBack}
-            disabled={currentPath === "/Users/erikbabcan" || currentPath === "/"}
+            disabled={
+              currentPath === "/Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main" ||
+              currentPath === "/Users/erikbabcan" ||
+              currentPath === "/"
+            }
           >
             <ArrowLeft className="w-3.5 h-3.5" />
           </Button>
@@ -262,13 +268,13 @@ export function FileExplorer() {
               placeholder="Search in folder..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-secondary/30 border border-border/50 rounded-xl py-1.5 pl-8 pr-3 text-xs outline-none text-foreground placeholder:text-muted-foreground focus:border-cyan-500/50 transition-colors"
+              className="w-full bg-secondary/30 border border-border/50 rounded-xl py-1.5 pl-8 pr-3 text-xs outline-none text-foreground placeholder:text-muted-foreground focus:border-accent/50 transition-colors"
             />
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="btn-3d h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-cyan-400"
+            className="active:scale-[0.98] h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-accent"
             onClick={() => setShowCreateInput(showCreateInput === 'file' ? null : 'file')}
             title="New File"
           >
@@ -277,7 +283,7 @@ export function FileExplorer() {
           <Button
             variant="ghost"
             size="icon"
-            className="btn-3d h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-cyan-400"
+            className="active:scale-[0.98] h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-accent"
             onClick={() => setShowCreateInput(showCreateInput === 'directory' ? null : 'directory')}
             title="New Folder"
           >
@@ -286,7 +292,7 @@ export function FileExplorer() {
           <Button
             variant="ghost"
             size="icon"
-            className={`btn-3d h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-white ${loading ? "animate-spin" : ""}`}
+            className={`active:scale-[0.98] h-8 w-8 rounded-xl hover:bg-secondary/40 text-muted-foreground hover:text-white ${loading ? "animate-spin" : ""}`}
             onClick={handleRefresh}
             title="Refresh"
           >
@@ -302,19 +308,19 @@ export function FileExplorer() {
               placeholder={`Enter new ${showCreateInput} name...`}
               value={createName}
               onChange={e => setCreateName(e.target.value)}
-              className="flex-1 bg-secondary/50 border border-border/50 rounded-xl px-3 py-1.5 text-xs outline-none text-foreground focus:border-cyan-500/50"
+              className="flex-1 bg-secondary/50 border border-border/50 rounded-xl px-3 py-1.5 text-xs outline-none text-foreground focus:border-accent/50"
               autoFocus
             />
             <Button
               type="submit"
-              className="btn-3d bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30 text-xs px-3 h-8 rounded-xl"
+              className="active:scale-[0.98] bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 text-xs px-3 h-8 rounded-xl"
             >
               Create
             </Button>
             <Button
               type="button"
               variant="ghost"
-              className="btn-3d h-8 w-8 rounded-xl p-0"
+              className="active:scale-[0.98] h-8 w-8 rounded-xl p-0"
               onClick={() => {
                 setShowCreateInput(null)
                 setCreateName("")
@@ -367,7 +373,7 @@ export function FileExplorer() {
             {/* Editor Top Bar */}
             <div className="flex items-center justify-between border-b border-border/30 pb-3 mb-4 shrink-0">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-cyan-400" />
+                <FileText className="w-4 h-4 text-accent" />
                 <span className="text-xs font-semibold text-foreground/90 tracking-wide font-mono">
                   {activeFile.name}
                 </span>
@@ -377,7 +383,7 @@ export function FileExplorer() {
                   <Button
                     onClick={handleSaveFile}
                     disabled={saving}
-                    className="btn-3d btn-glow gap-1.5 bg-gradient-to-br from-cyan-500 via-gray-900 to-black hover:from-cyan-600 hover:to-black text-white text-xs px-3 h-8 rounded-xl shadow-xl font-medium"
+                    className="active:scale-[0.98] gap-1.5 bg-gradient-to-br from-accent via-gray-900 to-black hover:from-accent hover:to-black text-white text-xs px-3 h-8 rounded-xl shadow-xl font-medium"
                   >
                     <Save className="w-3.5 h-3.5" />
                     {saving ? "Saving..." : "Save Changes"}
@@ -385,7 +391,7 @@ export function FileExplorer() {
                 )}
                 <Button
                   variant="ghost"
-                  className="btn-3d text-muted-foreground hover:text-white text-xs px-3 h-8 rounded-xl hover:bg-secondary/40"
+                  className="active:scale-[0.98] text-muted-foreground hover:text-white text-xs px-3 h-8 rounded-xl hover:bg-secondary/40"
                   onClick={() => setActiveFile(null)}
                 >
                   Close
@@ -415,7 +421,7 @@ export function FileExplorer() {
                   <textarea
                     value={editorContent}
                     onChange={e => setEditorContent(e.target.value)}
-                    className="flex-1 h-full bg-transparent border-none outline-none resize-none p-3 text-[#d4d4d8] leading-5 font-mono text-xs overflow-y-auto selection:bg-cyan-500/20"
+                    className="flex-1 h-full bg-transparent border-none outline-none resize-none p-3 text-[#d4d4d8] leading-5 font-mono text-xs overflow-y-auto selection:bg-accent/20"
                     placeholder="Empty file content..."
                   />
                 </div>
@@ -427,7 +433,7 @@ export function FileExplorer() {
           <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
             <div className="max-w-sm text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-secondary/20 border border-border/40 flex items-center justify-center mx-auto shadow-inner shadow-black">
-                <FolderOpen className="w-7 h-7 text-cyan-400 animate-pulse" />
+                <FolderOpen className="w-7 h-7 text-accent animate-pulse" />
               </div>
               <h3 className="text-base font-semibold text-foreground font-[var(--font-heading)]">
                 Files Explorer Dashboard

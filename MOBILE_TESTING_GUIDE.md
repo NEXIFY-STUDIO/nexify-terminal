@@ -22,15 +22,16 @@ launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
 
 ---
 
-## iPhone 17 Air — 300 test suite (hybrid)
+## iPhone 17 Air — 330 test suite (hybrid)
 
 | Príkaz | Čo beží |
 |--------|---------|
-| `pnpm run test:e2e` | lint + core + github-iphone + 250 static = **451** |
-| `pnpm run test:iphone17-static` | #001–#250 (8 modulov) |
-| `pnpm run test:iphone17-300` | 250 static + 50 Playwright live |
-| `pnpm run test:github-iphone` | 35 post-`git pull` integrity |
-| `pnpm run test:catalog` | prehľad 14 kategórií |
+| `pnpm run test:e2e` | lint + core + github-iphone + iPhone static finalize |
+| `pnpm run test:iphone17-static` | #001–#260 (8 modulov) |
+| `pnpm run test:iphone17-300` | 260 static + 70 Playwright live (screens #301–#320) |
+| `pnpm run test:iphone17-live` | Playwright lockscreen + authenticated + screens |
+| `pnpm run test:github-iphone` | post-`git pull` integrity |
+| `pnpm run test:catalog` | prehľad kategórií |
 
 Playwright (prvýkrát):
 
@@ -38,20 +39,29 @@ Playwright (prvýkrát):
 pnpm install && npx playwright install chromium
 ```
 
-### Static moduly (#001–#250)
+### Static moduly (#001–#260)
 
 | Modul | IDs | Count | Focus |
 |-------|-----|-------|-------|
 | Viewport & Display | #001–#040 | 40 | viewport meta, overflow lock |
 | PWA & Standalone | #041–#075 | 35 | manifest, SW, icons |
 | Safe Area & Dynamic Island | #076–#105 | 30 | env(safe-area-inset-*) |
-| Lockscreen & Auth | #106–#140 | 35 | PIN 0000, WebAuthn |
-| Gestures & Navigation | #141–#180 | 40 | swipe tabs, long-press |
+| Lockscreen & Auth | #106–#140 | 35 | PIN, WebAuthn |
+| Gestures & Navigation | #141–#180 | 40 | swipe, long-press, paste, dual-chat |
 | Haptics & Audio | #181–#205 | 25 | vibrate + Web Audio fallback |
 | WebGL & Particles | #206–#240 | 35 | orb, dpr throttle |
-| UI Animations | #241–#250 | 10 | pulse, slide-in |
+| UI Animations | #241–#260 | 20 | pulse, slide-in |
 
-### Live Playwright (#251–#300)
+### Live Playwright (#251–#320)
+
+| Blok | IDs | Focus |
+|------|-----|-------|
+| Lockscreen | #251–#260 | PIN unlock |
+| Viewport / tabs / safe-area / WebGL | #261–#294 | iPhone 17 Air stability |
+| Screen panels | #295–#300 | Terminal, Files, System, Insolvency, Dual Coder |
+| Screens E2E | #301–#320 | all 6 tabs, hit targets, long-press, paste fallback |
+
+Vyžaduje bežiaci stack: `pnpm dev:all` na `:3322`.
 
 Vyžaduje bežiaci `pnpm dev:all` na `:3322`.
 

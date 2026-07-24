@@ -181,7 +181,9 @@ test('19 — Manuál button a obsah v appke', () => {
   const chat = fs.readFileSync(chatAreaPath, 'utf8');
   const manual = fs.readFileSync(path.join(rootDir, 'components/nexify-manual-sheet.tsx'), 'utf8');
   const content = fs.readFileSync(path.join(rootDir, 'lib/operator/nexifyManualContent.ts'), 'utf8');
-  assert(chat.includes('NexifyManualSheet'), 'missing Manuál button in chat-area');
+  assert(chat.includes('NexifyHeader') || chat.includes('NexifyManualSheet'), 'missing header/manual wire');
+  const header = fs.readFileSync(path.join(rootDir, 'components/nexify-header.tsx'), 'utf8');
+  assert(header.includes('NexifyManualSheet'), 'missing Manuál button in header');
   assert(manual.includes('Nexify Manuál'), 'missing manual sheet title');
   assert(content.includes('MISTRAL_API_KEY_1'), 'missing mistral env docs');
   assert(content.includes('launchctl kickstart'), 'missing restart command');
@@ -444,12 +446,13 @@ test('46 — formatExportConfirmation describes delivery method', () => {
 
 test('47 — chat-area wires export command and markdown menu', () => {
   const src = fs.readFileSync(chatAreaPath, 'utf8');
+  const headerSrc = fs.readFileSync(path.join(rootDir, 'components/nexify-header.tsx'), 'utf8');
   assert(src.includes('isExportSessionCommand'), 'missing export detector');
   assert(src.includes('handleExportSession'), 'missing export handler');
   assert(src.includes('formatSessionMarkdown'), 'missing markdown formatter');
   assert(src.includes('deliverSessionMarkdown'), 'missing deliver helper');
-  assert(src.includes('Export as Markdown'), 'menu item');
-  assert(src.includes('void handleExportSession()'), 'menu wired');
+  assert(headerSrc.includes('Export as Markdown'), 'menu item');
+  assert(src.includes("handleExportSession('markdown')") || src.includes('void handleExportSession('), 'menu wired');
 });
 
 test('48 — isRestartServerCommand exact standalone match', () => {

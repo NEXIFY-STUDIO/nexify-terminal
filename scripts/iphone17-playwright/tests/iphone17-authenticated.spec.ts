@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab } from '../screen-helpers';
 
 test.beforeEach(async ({ page }, testInfo) => {
   try {
@@ -58,36 +59,36 @@ test('#270 page title is Nexify Terminal', async ({ page }) => {
 
 // --- Swipe navigation #271–280 ---
 test('#271 Chat tab active by default after unlock', async ({ page }) => {
-  await expect(page.getByRole('button', { name: 'Chat', exact: true })).toBeVisible();
+  await expect(page.getByTestId('view-tab-chat')).toBeVisible();
 });
 
 test('#272 tap Terminal tab switches view', async ({ page }) => {
-  await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Terminal', exact: true })).toBeVisible();
+  await gotoTab(page, 'Terminal');
+  await expect(page.getByTestId('view-tab-terminal')).toBeVisible();
 });
 
 test('#273 tap Files tab switches view', async ({ page }) => {
-  await page.getByRole('button', { name: 'Files', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Files', exact: true })).toBeVisible();
+  await gotoTab(page, 'Files');
+  await expect(page.getByTestId('view-tab-files')).toBeVisible();
 });
 
 test('#274 tap System tab switches view', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'System', exact: true })).toBeVisible();
+  await gotoTab(page, 'System');
+  await expect(page.getByTestId('view-tab-system')).toBeVisible();
 });
 
 test('#275 swipe left from chat changes panel', async ({ page }) => {
   const box = await page.locator('body').boundingBox();
   if (!box) return;
   const y = box.height / 2;
-  await page.mouse.move(box.width * 0.7, y);
+  await page.mouse.move(box.width * 0.8, y);
   await page.mouse.down();
   await page.mouse.move(box.width * 0.2, y, { steps: 8 });
   await page.mouse.up();
 });
 
-test('#276 swipe right returns toward chat', async ({ page }) => {
-  await page.getByRole('button', { name: 'Terminal', exact: true }).click();
+test('#276 swipe right from terminal changes panel', async ({ page }) => {
+  await gotoTab(page, 'Terminal');
   const box = await page.locator('body').boundingBox();
   if (!box) return;
   const y = box.height / 2;
@@ -98,13 +99,15 @@ test('#276 swipe right returns toward chat', async ({ page }) => {
 });
 
 test('#277 Insolvency tab reachable', async ({ page }) => {
-  await page.getByRole('button', { name: 'Insolvency', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Insolvency', exact: true })).toBeVisible();
+  await gotoTab(page, 'Insolvency');
+  await expect(page.getByText(/Tracked Companies|Insolvency|GOLD TAXI|Search partners/i).first()).toBeVisible({
+    timeout: 8000,
+  });
 });
 
 test('#278 tab bar remains visible after switch', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Chat', exact: true })).toBeVisible();
+  await gotoTab(page, 'System');
+  await expect(page.getByTestId('view-tab-chat')).toBeVisible();
 });
 
 test('#279 touch swipe does not scroll document', async ({ page }) => {
@@ -120,14 +123,14 @@ test('#279 touch swipe does not scroll document', async ({ page }) => {
 });
 
 test('#280 Chat tab click returns from System', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  await page.getByRole('button', { name: 'Chat', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Chat', exact: true })).toBeVisible();
+  await gotoTab(page, 'System');
+  await gotoTab(page, 'Chat');
+  await expect(page.getByTestId('view-tab-chat')).toBeVisible();
 });
 
 // --- Safe area layout #281–288 ---
 test('#281 header element within viewport top', async ({ page }) => {
-  const box = await page.locator('header').first().boundingBox();
+  const box = await page.getByTestId('nexify-header').boundingBox();
   expect(box).toBeTruthy();
   expect(box!.y).toBeGreaterThanOrEqual(0);
 });
@@ -159,17 +162,17 @@ test('#284 no horizontal overflow on body', async ({ page }) => {
 });
 
 test('#285 main content visible after unlock', async ({ page }) => {
-  await expect(page.locator('header').first()).toBeVisible();
+  await expect(page.getByTestId('nexify-header')).toBeVisible();
 });
 
 test('#286 tab buttons not clipped left edge', async ({ page }) => {
-  const box = await page.getByRole('button', { name: 'Chat', exact: true }).boundingBox();
+  const box = await page.getByTestId('view-tab-chat').boundingBox();
   expect(box!.x).toBeGreaterThanOrEqual(0);
 });
 
 test('#287 tab buttons not clipped right edge', async ({ page }) => {
   const iw = await page.evaluate(() => window.innerWidth);
-  const box = await page.getByRole('button', { name: 'System', exact: true }).boundingBox();
+  const box = await page.getByTestId('view-tab-more').boundingBox();
   expect(box!.x + box!.width).toBeLessThanOrEqual(iw + 2);
 });
 
@@ -198,13 +201,13 @@ test('#291 canvas renders content', async ({ page }) => {
 });
 
 test('#292 particle orb visible in chat view', async ({ page }) => {
-  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await gotoTab(page, 'Chat');
   await expect(page.locator('canvas').first()).toBeVisible();
 });
 
 test('#293 canvas survives tab switch', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  await page.getByRole('button', { name: 'Chat', exact: true }).click();
+  await gotoTab(page, 'System');
+  await gotoTab(page, 'Chat');
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 8000 });
 });
 
@@ -213,37 +216,37 @@ test('#294 canvas survives viewport resize', async ({ page }) => {
   await expect(page.locator('canvas').first()).toBeVisible();
 });
 
-// --- UI animations #295–300 ---
-test('#295 animate classes present in DOM', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  const count = await page.locator('[class*="animate-"]').count();
-  expect(count).toBeGreaterThanOrEqual(0);
+// --- Screen panel smoke #295–300 ---
+test('#295 Terminal panel shows Nexify Interactive Shell', async ({ page }) => {
+  await gotoTab(page, 'Terminal');
+  await expect(page.getByText(/Nexify Interactive Shell|Initializing interactive shell/i)).toBeVisible({
+    timeout: 8000,
+  });
 });
 
-test('#296 animate utilities active after tab switch', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  const animated = await page.locator('[class*="animate-"]').count();
-  expect(animated).toBeGreaterThanOrEqual(0);
+test('#296 Files panel shows explorer search', async ({ page }) => {
+  await gotoTab(page, 'Files');
+  await expect(page.getByRole('textbox', { name: /Search in folder/i })).toBeVisible({ timeout: 12000 });
 });
 
-test('#297 tab switch transition completes', async ({ page }) => {
-  await page.getByRole('button', { name: 'Terminal', exact: true }).click();
-  await page.getByRole('button', { name: 'Chat', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Chat', exact: true })).toBeVisible();
+test('#297 System panel shows CPU monitor', async ({ page }) => {
+  await gotoTab(page, 'System');
+  await expect(page.getByText(/CPU Usage/i)).toBeVisible({ timeout: 8000 });
 });
 
-test('#298 system tab shows monitor panel', async ({ page }) => {
-  await page.getByRole('button', { name: 'System', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'System', exact: true })).toBeVisible();
+test('#298 Insolvency panel shows partners search', async ({ page }) => {
+  await gotoTab(page, 'Insolvency');
+  await expect(page.getByPlaceholder(/Search partners/i)).toBeVisible({ timeout: 8000 });
 });
 
-test('#299 input bar backdrop blur visible', async ({ page }) => {
-  await expect(page.locator('[class*="backdrop-blur"]').first()).toBeVisible({ timeout: 8000 });
+test('#299 Dual Coder panel shows Vibe Coder', async ({ page }) => {
+  await gotoTab(page, 'Dual Coder');
+  await expect(page.getByText(/Vibe Coder/i)).toBeVisible({ timeout: 8000 });
 });
 
-test('#300 full smoke: navigate all main tabs', async ({ page }) => {
-  for (const tab of ['Chat', 'Terminal', 'Files', 'System']) {
-    await page.getByRole('button', { name: tab, exact: true }).click();
-    await expect(page.getByRole('button', { name: tab, exact: true })).toBeVisible();
+test('#300 full smoke: navigate all six tabs', async ({ page }) => {
+  for (const tab of ['Chat', 'Terminal', 'Files', 'System', 'Insolvency', 'Dual Coder'] as const) {
+    await gotoTab(page, tab);
+    await expect(page.getByTestId('nexify-header')).toBeVisible();
   }
 });

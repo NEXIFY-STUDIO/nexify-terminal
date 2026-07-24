@@ -35,6 +35,7 @@ launchd-err.log
 .cursor/
 test-results/
 docs/
+pw-e2e-temp-*.txt
 
 # vercel
 .vercel

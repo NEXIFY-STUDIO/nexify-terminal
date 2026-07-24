@@ -1,12 +1,8 @@
 "use client"
 
 import {
-  ChevronDown,
-  Settings,
-  Upload,
   Mic,
   ArrowUp,
-  Paperclip,
   X,
   Check,
   Terminal,
@@ -60,10 +56,12 @@ import {
 import {
   isExportSessionCommand,
   formatSessionMarkdown,
+  formatSessionJson,
   deliverSessionMarkdown,
+  deliverSessionText,
   formatExportConfirmation,
 } from "@/lib/operator/sessionExport.mjs"
-import { NexifyManualSheet } from "@/components/nexify-manual-sheet"
+import { NexifyHeader, type NexifyViewMode } from "@/components/nexify-header"
 
 let persistedShellSessionId: string | null = null
 let shellSessionCleanupTimer: ReturnType<typeof setTimeout> | null = null
@@ -142,7 +140,7 @@ function ShellCommandChips({
           type="button"
           disabled={disabled}
           onClick={() => onRun(cmd)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-mono hover:bg-cyan-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/30 bg-accent/10 text-accent text-xs font-mono hover:bg-accent/20 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
         >
           <Terminal className="w-3 h-3 shrink-0" />
           <span>$ {cmd}</span>
@@ -192,10 +190,15 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
   const voiceSessionRef = useRef<ReturnType<typeof createVoiceSession> | null>(null)
   const voiceCancelledRef = useRef(false)
   const voiceHoldRef = useRef(false)
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
-  const [configDropdownOpen, setConfigDropdownOpen] = useState(false)
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
+  const [voiceLang, setVoiceLang] = useState<"sk-SK" | "en-US">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("nexify_voice_lang")
+      if (saved === "sk-SK" || saved === "en-US") return saved
+      return resolveSpeechLanguage(navigator.language)
+    }
+    return "en-US"
+  })
 
   const isItemExpanded = (id: string, type: 'chat' | 'command-group') => {
     if (expandedItems[id] !== undefined) {
@@ -280,7 +283,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
   }, [activeModel])
   const [shellSessionId, setShellSessionId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'chat' | 'terminal' | 'files' | 'system' | 'insolvency' | 'dual-chat'>('chat')
+  const [viewMode, setViewMode] = useState<NexifyViewMode>('chat')
   const [isExecutingCommand, setIsExecutingCommand] = useState(false)
   const [serverHealthOk, setServerHealthOk] = useState<boolean | null>(null)
   const [serverHealthFailures, setServerHealthFailures] = useState(0)
@@ -389,7 +392,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     setIsRecording(true);
 
     const session = createVoiceSession({
-      language: resolveSpeechLanguage(navigator.language),
+      language: voiceLang,
       onError: () => {
         if (!voiceCancelledRef.current) showVoiceUnavailableToast();
         voiceSessionRef.current = null;
@@ -1258,13 +1261,19 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     ]);
   };
 
-  const handleExportSession = async () => {
+  const handleExportSession = async (format: 'markdown' | 'json' = 'markdown') => {
     triggerHaptic('light');
     setInput("");
-    setExportDropdownOpen(false);
 
     const snapshot = messagesRef.current;
-    const markdown = formatSessionMarkdown(snapshot, { pin: process.env.NEXT_PUBLIC_PASSCODE });
+    const pin = process.env.NEXT_PUBLIC_PASSCODE;
+    const payload =
+      format === 'json'
+        ? formatSessionJson(snapshot, {
+            pin,
+            session: buildSessionFields(snapshot),
+          })
+        : formatSessionMarkdown(snapshot, { pin });
 
     setMessages((prev) => [
       ...prev,
@@ -1272,13 +1281,16 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     ]);
 
     try {
-      const { method } = await deliverSessionMarkdown(markdown);
+      const { method } =
+        format === 'json'
+          ? await deliverSessionText(payload, { title: 'Nexify Session JSON' })
+          : await deliverSessionMarkdown(payload);
       toast({
         title: method === 'share' ? 'SESSION zdieľaná' : 'SESSION skopírovaná',
         description:
           method === 'share'
-            ? 'Markdown export odoslaný cez share sheet.'
-            : 'Markdown export je v schránke.',
+            ? `${format === 'json' ? 'JSON' : 'Markdown'} export odoslaný cez share sheet.`
+            : `${format === 'json' ? 'JSON' : 'Markdown'} export je v schránke.`,
         duration: 3000,
       });
       setMessages((prev) => [
@@ -1286,7 +1298,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         {
           id: Math.random().toString(),
           role: 'assistant',
-          content: formatExportConfirmation(method),
+          content: formatExportConfirmation(method, format),
           type: 'chat',
         },
       ]);
@@ -1309,6 +1321,51 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         },
       ]);
     }
+  };
+
+  const handleAttachFiles = async (files: FileList) => {
+    triggerHaptic('light');
+    const parts: string[] = [];
+    for (const file of Array.from(files)) {
+      const isText =
+        file.type.startsWith('text/') ||
+        /\.(md|txt|json|js|ts|tsx|jsx|mjs|cjs|css|html|xml|yml|yaml|env|sh|py|rb|go|rs|java|c|cpp|h|csv|log)$/i.test(
+          file.name,
+        );
+      if (isText && file.size <= 200_000) {
+        try {
+          const text = await file.text();
+          const clipped = text.length > 8000 ? `${text.slice(0, 8000)}\n…[truncated]` : text;
+          parts.push(`[attached: ${file.name}]\n\`\`\`\n${clipped}\n\`\`\``);
+        } catch {
+          parts.push(`[attached: ${file.name} — ${file.size}B, read failed]`);
+        }
+      } else {
+        parts.push(`[attached: ${file.name} — ${file.type || 'binary'}, ${file.size}B]`);
+      }
+    }
+    if (!parts.length) return;
+    setInput((prev) => {
+      const block = parts.join('\n\n');
+      return prev.trim() ? `${prev.trim()}\n\n${block}` : block;
+    });
+    setViewMode('chat');
+    toast({
+      title: 'Súbor pripojený',
+      description: `${files.length} súbor(ov) vložených do inputu.`,
+      duration: 2500,
+    });
+  };
+
+  const handleLockScreen = () => {
+    triggerHaptic('medium');
+    localStorage.removeItem('nexify_authenticated');
+    window.location.reload();
+  };
+
+  const handleVoiceLangChange = (lang: 'sk-SK' | 'en-US') => {
+    setVoiceLang(lang);
+    localStorage.setItem('nexify_voice_lang', lang);
   };
 
   const handleClearSession = () => {
@@ -1352,7 +1409,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
     }
 
     if (isExportSessionCommand(trimmed)) {
-      void handleExportSession();
+      void handleExportSession('markdown');
       return;
     }
 
@@ -1640,225 +1697,30 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         }}
       />
 
-      <header className="relative z-20 px-3 pb-2 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] border-b border-border/50 backdrop-blur-sm bg-background/30">
-        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1.5">
-          {/* View Mode Toggle (Chat / Terminal / Files / System) */}
-          <div className="flex items-center bg-secondary/80 rounded-lg p-0.5 border border-border/30 shadow-lg h-7 mr-2">
-            <Button
-              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                viewMode === 'chat'
-                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-              }`}
-              onClick={() => handleViewModeChange('chat')}
-            >
-              Chat
-            </Button>
-            <Button
-              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                viewMode === 'terminal'
-                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-              }`}
-              onClick={() => handleViewModeChange('terminal')}
-            >
-              Terminal
-            </Button>
-            <Button
-              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                viewMode === 'files'
-                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-              }`}
-              onClick={() => handleViewModeChange('files')}
-            >
-              Files
-            </Button>
-            <Button
-              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                viewMode === 'system'
-                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-              }`}
-              onClick={() => handleViewModeChange('system')}
-            >
-              System
-            </Button>
-            <Button
-              className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                viewMode === 'insolvency'
-                  ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-              }`}
-              onClick={() => handleViewModeChange('insolvency')}
-            >
-              Insolvency
-            </Button>
-            <Button
-               className={`text-[10px] px-2.5 h-6 rounded-md transition-all duration-300 font-medium ${
-                 viewMode === 'dual-chat'
-                   ? 'bg-gradient-to-br from-primary via-gray-900 to-black text-white shadow-md'
-                   : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40'
-               }`}
-               onClick={() => handleViewModeChange('dual-chat')}
-            >
-              Dual Coder
-            </Button>
-          </div>
-
-          {/* Manuál — kompletný návod v appke */}
-          <NexifyManualSheet onOpen={() => triggerHaptic("light")} />
-
-          {/* Row 1: Active Model Selector, Configuration, Export */}
-          <div className="relative">
-            <Button
-              data-testid="model-selector-trigger"
-              className="btn-3d btn-glow gap-1 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm border border-border/30 shadow-lg text-[10px] px-2 py-1 h-7"
-              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-            >
-              {activeModel.label}
-              <ChevronDown
-                className={`w-3 h-3 transition-transform duration-300 ${modelDropdownOpen ? "rotate-180" : ""}`}
-              />
-            </Button>
-            {modelDropdownOpen && (
-              <div className="dropdown-menu" data-testid="model-selector-menu">
-                <button
-                  className="dropdown-item text-[10px] w-full text-left"
-                  onClick={() => {
-                    setActiveModel({ label: "Gemini 2.5 Flash", provider: "gemini", model: "gemini-2.5-flash" })
-                    setModelDropdownOpen(false)
-                  }}
-                >
-                  Gemini 2.5 Flash
-                </button>
-                <button
-                  className="dropdown-item text-[10px] w-full text-left"
-                  onClick={() => {
-                    setActiveModel({ label: "GPT-4.1 Mini", provider: "github-models", model: "openai/gpt-4.1-mini" })
-                    setModelDropdownOpen(false)
-                  }}
-                >
-                  GPT-4.1 Mini (GitHub)
-                </button>
-                <button
-                  className="dropdown-item text-[10px] w-full text-left"
-                  onClick={() => {
-                    setActiveModel({ label: "Mistral Small", provider: "mistral", model: "mistral-small-latest" })
-                    setModelDropdownOpen(false)
-                  }}
-                >
-                  Mistral Small
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="relative">
-            <Button
-              className="btn-3d btn-glow gap-1 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm border border-border/30 shadow-lg text-[10px] px-2 py-1 h-7"
-              onClick={() => setConfigDropdownOpen(!configDropdownOpen)}
-            >
-              <Settings className="w-3 h-3" />
-              Configuration
-            </Button>
-            {configDropdownOpen && (
-              <div className="dropdown-menu">
-                <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
-                  General Settings
-                </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
-                  API Keys
-                </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
-                  Preferences
-                </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setConfigDropdownOpen(false)}>
-                  Advanced
-                </button>
-                <div className="h-px bg-border/20 my-1" />
-                <button
-                  className="dropdown-item text-[10px] text-destructive hover:bg-destructive/10 w-full text-left"
-                  onClick={() => {
-                    setMessages([])
-                    setConfigDropdownOpen(false)
-                    triggerHaptic('medium')
-                  }}
-                >
-                  Clear Chat
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="relative">
-            <Button
-              className="btn-3d btn-glow gap-1 bg-gradient-to-br from-secondary/90 to-secondary/70 text-foreground hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm border border-border/30 shadow-lg text-[10px] px-2 py-1 h-7"
-              onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-            >
-              <Upload className="w-3 h-3" />
-              Export
-            </Button>
-            {exportDropdownOpen && (
-              <div className="dropdown-menu">
-                <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>
-                  Export as PDF
-                </button>
-                <button
-                  className="dropdown-item text-[10px]"
-                  onClick={() => void handleExportSession()}
-                >
-                  Export as Markdown
-                </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>
-                  Export as JSON
-                </button>
-                <button className="dropdown-item text-[10px]" onClick={() => setExportDropdownOpen(false)}>
-                  Share Link
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Row 2: Attach, Settings, Options */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="btn-3d gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 h-7"
-          >
-            <Paperclip className="w-2.5 h-2.5" />
-            Attach
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="btn-3d gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 h-7"
-          >
-            <Settings className="w-2.5 h-2.5" />
-            Settings
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="btn-3d gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 h-7"
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 3H7V7H3V3Z" fill="currentColor" opacity="0.6" />
-              <path d="M9 3H13V7H9V3Z" fill="currentColor" opacity="0.6" />
-              <path d="M3 9H7V13H3V9Z" fill="currentColor" opacity="0.6" />
-              <path d="M9 9H13V13H9V9Z" fill="currentColor" opacity="0.6" />
-            </svg>
-            Options
-          </Button>
-        </div>
-      </header>
+      <NexifyHeader
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        activeModel={activeModel}
+        onModelChange={setActiveModel}
+        voiceLang={voiceLang}
+        onVoiceLangChange={handleVoiceLangChange}
+        onClearChat={() => {
+          setMessages([])
+          triggerHaptic('medium')
+        }}
+        onExportMarkdown={() => void handleExportSession('markdown')}
+        onExportJson={() => void handleExportSession('json')}
+        onAttachFiles={(files) => void handleAttachFiles(files)}
+        onLock={handleLockScreen}
+        onHaptic={(t) => triggerHaptic(t)}
+      />
 
       {viewMode === 'chat' && (
         <div
-          className="operator-status relative z-10 px-4 py-1.5 border-b border-border/30 bg-background/20 backdrop-blur-sm font-mono text-[10px] text-muted-foreground truncate"
+          className="operator-status relative z-10 px-4 py-1.5 bg-sidebar/80 backdrop-blur-sm font-mono text-[10px] text-muted-foreground truncate"
           title={`workspace: /Users/erikbabcan · stack: Nexify :3322 · hack-api :3021 · ai-proxy :8788`}
         >
-          <span className="text-cyan-400/90">{viewMode}</span>
+          <span className="text-accent/90">{viewMode}</span>
           <span className="mx-1.5 text-border">·</span>
           <span>Nexify :3322 · :3021 · :8788</span>
           <span className="mx-1.5 text-border">·</span>
@@ -1889,7 +1751,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             variant="outline"
             disabled={isRestartingServer}
             onClick={() => void handleRestartServer({ silent: true })}
-            className="btn-3d shrink-0 h-7 px-2 text-[10px] border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
+            className="active:scale-[0.98] shrink-0 h-7 px-2 text-[10px] border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
           >
             <RefreshCw className={`w-3 h-3 mr-1 ${isRestartingServer ? 'animate-spin' : ''}`} />
             Reštartovať
@@ -2088,14 +1950,14 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="btn-3d h-8 w-8 rounded-full bg-secondary/30 hover:bg-destructive/20 text-white hover:text-destructive"
+                      className="active:scale-[0.98] h-8 w-8 rounded-full bg-secondary/30 hover:bg-destructive/20 text-white hover:text-destructive"
                       onClick={() => stopVoiceInput(true)}
                     >
                       <X className="w-4 h-4" />
                     </Button>
                     <Button
                       size="icon"
-                      className="btn-3d btn-glow h-8 w-8 rounded-full bg-gradient-to-br from-primary via-gray-900 to-black hover:from-gray-900 hover:to-black text-white shadow-xl"
+                      className="active:scale-[0.98] h-8 w-8 rounded-full bg-gradient-to-br from-primary via-gray-900 to-black hover:from-gray-900 hover:to-black text-white shadow-xl"
                       onClick={() => stopVoiceInput(false)}
                     >
                       <Check className="w-4 h-4" />
@@ -2140,7 +2002,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <Button
                 variant={sidebarOpen ? "secondary" : "ghost"}
                 size="icon"
-                className="btn-3d h-9 w-9 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-lg shrink-0"
+                className="active:scale-[0.98] h-9 w-9 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-lg shrink-0"
                 onClick={() => {
                   triggerHaptic('light');
                   toggleSidebar();
@@ -2158,7 +2020,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
                   setInput(applyInputModePrefix(input, next));
                   setTimeout(() => textareaRef.current?.focus(), 0);
                 }}
-                className="btn-3d h-9 min-w-9 px-2 rounded-full bg-secondary/50 border border-border/40 text-[11px] font-mono font-semibold text-cyan-400 shrink-0 hover:bg-secondary/70"
+                className="active:scale-[0.98] h-9 min-w-9 px-2 rounded-full bg-secondary/50 border border-border/40 text-[11px] font-mono font-semibold text-accent shrink-0 hover:bg-secondary/70"
                 title="Prepni režim: AI → $ → /"
               >
                 {getInputModeLabel(inputMode)}
@@ -2168,7 +2030,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <Button
                 variant="ghost"
                 size="icon"
-                className={`btn-3d h-9 w-9 shrink-0 touch-none select-none ${
+                className={`active:scale-[0.98] h-9 w-9 shrink-0 touch-none select-none ${
                   isRecording
                     ? 'text-destructive bg-destructive/15'
                     : 'text-white hover:text-foreground'
@@ -2215,7 +2077,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               <Button
                 size="icon"
                 onClick={handleSend}
-                className="btn-3d btn-glow h-9 w-9 rounded-full bg-gradient-to-br from-primary via-gray-900 to-black hover:from-gray-900 hover:to-black text-white shadow-xl shrink-0"
+                className="active:scale-[0.98] h-9 w-9 rounded-full bg-gradient-to-br from-primary via-gray-900 to-black hover:from-gray-900 hover:to-black text-white shadow-xl shrink-0"
               >
                 <ArrowUp className="w-5 h-5" />
               </Button>
@@ -2248,7 +2110,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
             disabled={!contextMenu.textToCopy}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-95 ${
               contextMenu.textToCopy
-                ? 'text-cyan-400 hover:bg-white/5 active:bg-white/10 cursor-pointer'
+                ? 'text-accent hover:bg-white/5 active:bg-white/10 cursor-pointer'
                 : 'text-zinc-600 cursor-not-allowed opacity-50'
             }`}
           >
@@ -2263,7 +2125,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           <button
             type="button"
             onClick={handlePaste}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-cyan-400 hover:bg-white/5 active:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-accent hover:bg-white/5 active:bg-white/10 transition-all duration-200 active:scale-95 cursor-pointer"
           >
             <Clipboard className="w-3.5 h-3.5" />
             Vložiť
@@ -2293,7 +2155,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               value={pasteDialog.tempText}
               onChange={(e) => setPasteDialog(prev => ({ ...prev, tempText: e.target.value }))}
               placeholder="Sem vložte skopírovaný text..."
-              className="w-full min-h-[90px] p-3 rounded-lg border border-border bg-zinc-900/50 text-foreground text-sm outline-none resize-none focus:border-cyan-500/50 transition-colors"
+              className="w-full min-h-[90px] p-3 rounded-lg border border-border bg-zinc-900/50 text-foreground text-sm outline-none resize-none focus:border-accent/50 transition-colors"
               autoFocus
             />
 
@@ -2308,7 +2170,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
               </Button>
               <Button
                 size="sm"
-                className="btn-glow h-8 px-4 rounded-md bg-gradient-to-br from-primary via-gray-900 to-black text-white text-xs font-semibold shadow-md"
+                className="active:scale-[0.98] h-8 px-4 rounded-md bg-gradient-to-br from-primary via-gray-900 to-black text-white text-xs font-semibold shadow-md"
                 onClick={async () => {
                   const textToPaste = pasteDialog.tempText;
                   setPasteDialog({ visible: false, tempText: "" });

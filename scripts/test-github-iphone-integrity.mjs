@@ -72,10 +72,11 @@ test('05 — iPhone 17 master runner exists', () => {
   assert(exists('scripts/test-iphone17-air-300.mjs'), 'missing iphone17 runner');
 });
 
-test('06 — all 8 iPhone static modules present', () => {
+test('06 — all 9 iPhone static modules present', () => {
   for (const mod of IPHONE17_STATIC_MODULES) {
     assert(exists(`scripts/iphone17-tests/${mod}.mjs`), `missing module ${mod}`);
   }
+  assert(IPHONE17_STATIC_MODULES.length === 9, 'expected 9 static modules');
 });
 
 test('07 — iPhone Playwright config present', () => {
@@ -196,7 +197,12 @@ test('24 — voice detect module', () => {
 
 test('25 — NexifyManualSheet in UI', () => {
   assert(exists('components/nexify-manual-sheet.tsx'), 'missing manual sheet');
-  assert(read('components/chat-area.tsx').includes('NexifyManualSheet'), 'manual not wired');
+  const header = read('components/nexify-header.tsx');
+  const chat = read('components/chat-area.tsx');
+  assert(
+    header.includes('NexifyManualSheet') || chat.includes('NexifyManualSheet'),
+    'manual not wired',
+  );
 });
 
 test('26 — PIN auth guard component', () => {
@@ -223,14 +229,14 @@ test('30 — persona test count ≥ 22', () => {
   assert(/22 tests/.test(persona), 'persona test header outdated');
 });
 
-test('31 — integrity suite count ≥ 75', () => {
+test('31 — integrity suite count ≥ 101', () => {
   const integrity = read('scripts/test-integrity-suite.mjs');
-  assert(/75 Assertions/.test(integrity), 'integrity count outdated');
+  assert(/101 Assertions/.test(integrity), 'integrity count outdated');
 });
 
-test('32 — iPhone index validates 260 static', () => {
+test('32 — iPhone index validates 280 static', () => {
   const idx = read('scripts/iphone17-tests/index.mjs');
-  assert(idx.includes('STATIC_COUNT !== 260'), 'missing 260 guard');
+  assert(idx.includes('STATIC_COUNT !== 280'), 'missing 280 guard');
 });
 
 test('33 — playwright iPhone device profile', () => {

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * iPhone 17 Air Master Test Suite — 310 tests (260 static + 50 live Playwright)
+ * iPhone 17 Air Master Test Suite — 359 tests (280 static + 79 live Playwright)
+ * Live: lockscreen + authenticated + screens + operator #321–#327
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -13,7 +14,11 @@ const args = process.argv.slice(2);
 const staticOnly = args.includes('--static-only');
 const liveOnly = args.includes('--live-only');
 
-console.log('📱 iPhone 17 Air Test Suite — 310 Tests (Hybrid)\n');
+/** Live Playwright projects (setup + lockscreen + authenticated incl. #321–#327) */
+const LIVE_COUNT = 79;
+const SUITE_TOTAL = STATIC_COUNT + LIVE_COUNT;
+
+console.log(`📱 iPhone 17 Air Test Suite — ${SUITE_TOTAL} Tests (Hybrid)\n`);
 console.log('='.repeat(54));
 
 let totalPassed = 0;
@@ -35,7 +40,7 @@ async function runStatic() {
 }
 
 function runLive() {
-  console.log(`\n[Phase 2/2] Live Playwright Tests (#261–#310)\n`);
+  console.log(`\n[Phase 2/2] Live Playwright Tests (#251–#320, screens suite)\n`);
 
   const configPath = path.join(__dirname, 'iphone17-playwright/playwright.config.ts');
   const pwBin = path.join(ROOT_DIR, 'node_modules', '.bin', 'playwright');
@@ -57,12 +62,12 @@ function runLive() {
   }
 
   if (result.status === 0) {
-    totalPassed += 50;
-    console.log('\nLive Result: 50/50 passed');
+    totalPassed += LIVE_COUNT;
+    console.log(`\nLive Result: ${LIVE_COUNT}/${LIVE_COUNT} passed`);
     return true;
   }
 
-  totalFailed += 50;
+  totalFailed += LIVE_COUNT;
   console.error('\nLive Result: some Playwright tests failed');
   return false;
 }
@@ -74,19 +79,17 @@ async function main() {
   if (!liveOnly) {
     staticOk = await runStatic();
   } else {
-    totalPassed += STATIC_COUNT; // skipped counts as not run
+    totalPassed += STATIC_COUNT;
   }
 
   if (!staticOnly) {
     liveOk = runLive();
   }
 
-  const ranStatic = !liveOnly;
-  const ranLive = !staticOnly;
-  const staticCount = ranStatic ? STATIC_COUNT : 0;
-  const liveCount = ranLive && liveOk ? 50 : (ranLive ? 0 : 0);
-  const expectedTotal = (ranStatic ? STATIC_COUNT : 0) + (ranLive ? 50 : 0);
-  const actualPassed = (ranStatic ? (staticOk ? STATIC_COUNT : totalPassed) : 0) + (ranLive && liveOk ? 50 : 0);
+  const expectedTotal = (liveOnly ? 0 : STATIC_COUNT) + (staticOnly ? 0 : LIVE_COUNT);
+  const actualPassed =
+    (liveOnly ? 0 : staticOk ? STATIC_COUNT : Math.max(0, STATIC_COUNT - allFailures.length)) +
+    (staticOnly ? 0 : liveOk ? LIVE_COUNT : 0);
 
   console.log('\n' + '='.repeat(54));
   console.log('iPhone 17 Air Test Suite Summary');

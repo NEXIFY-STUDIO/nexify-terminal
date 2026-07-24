@@ -203,32 +203,44 @@ export function createShellSessionManager({
     //  2) usePty=true (no factory)  → script(1) wrapper (Linux/BSD argv differ).
     //  3) usePty=false              → /bin/sh -c (no PTY, line-oriented only).
     let child;
-    if (usePty && typeof ptyFactory === 'function') {
-      const ptyProc = ptyFactory('/bin/sh', ['-c', innerCommand], {
-        name: shellEnv.TERM || 'xterm-256color',
-        cols,
-        rows,
+    const spawnWithoutPty = () =>
+      spawnProcess('/bin/sh', ['-c', innerCommand], {
         cwd: resolvedCwd,
         env: shellEnv,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
-      child = adaptPtyToChild(ptyProc);
-    } else {
+
+    if (usePty && typeof ptyFactory === 'function') {
+      try {
+        const ptyProc = ptyFactory('/bin/sh', ['-c', innerCommand], {
+          name: shellEnv.TERM || 'xterm-256color',
+          cols,
+          rows,
+          cwd: resolvedCwd,
+          env: shellEnv,
+        });
+        child = adaptPtyToChild(ptyProc);
+      } catch {
+        // Broken native binding (e.g. posix_spawnp) — keep shell usable.
+        child = spawnWithoutPty();
+      }
+    } else if (usePty) {
       const isBsdScript = scriptPlatform === 'darwin' || scriptPlatform === 'freebsd';
-      const spawnBin = usePty ? scriptCommand : '/bin/sh';
-      const spawnArgs = usePty
-        ? (isBsdScript
-          ? ['-q', '/dev/null', '/bin/sh', '-c', innerCommand]
-          : ['-q', '-c', innerCommand, '/dev/null'])
-        : ['-c', innerCommand];
-      child = spawnProcess(
-        spawnBin,
-        spawnArgs,
-        {
+      const spawnBin = scriptCommand;
+      const spawnArgs = isBsdScript
+        ? ['-q', '/dev/null', '/bin/sh', '-c', innerCommand]
+        : ['-q', '-c', innerCommand, '/dev/null'];
+      try {
+        child = spawnProcess(spawnBin, spawnArgs, {
           cwd: resolvedCwd,
           env: shellEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
-        }
-      );
+        });
+      } catch {
+        child = spawnWithoutPty();
+      }
+    } else {
+      child = spawnWithoutPty();
     }
 
     const createdAt = now();

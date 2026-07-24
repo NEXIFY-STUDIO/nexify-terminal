@@ -20,12 +20,35 @@ const API_VERSION = '1.0.0';
 
 // Best-effort node-pty load. When present, the shell manager will spawn child
 // processes through a real PTY (required for TUI apps like @github/copilot).
-// When absent, it falls back to script(1) or /bin/sh -c.
+// When absent or broken (missing native binding / posix_spawnp), fall back to
+// script(1) or /bin/sh -c so remote shell stays usable.
 let ptyFactoryFn = null;
 try {
   const require = createRequire(import.meta.url);
   const ptyMod = require('node-pty');
-  ptyFactoryFn = ptyMod.spawn || ptyMod.default?.spawn || null;
+  const spawnFn = ptyMod.spawn || ptyMod.default?.spawn || null;
+  if (typeof spawnFn === 'function') {
+    // Probe once — a loadable JS wrapper with a broken .node still "requires".
+    try {
+      const probe = spawnFn('/bin/sh', ['-c', 'exit 0'], {
+        name: 'xterm-256color',
+        cols: 40,
+        rows: 12,
+        cwd: process.cwd(),
+      });
+      try {
+        probe.kill();
+      } catch {
+        // ignore
+      }
+      ptyFactoryFn = spawnFn;
+    } catch (probeErr) {
+      console.warn(
+        `[hacking-api] node-pty unusable (${probeErr?.message || probeErr}); using non-PTY shell fallback`
+      );
+      ptyFactoryFn = null;
+    }
+  }
 } catch {
   ptyFactoryFn = null;
 }
@@ -78,7 +101,7 @@ export function createApp({
       .map((item) => item.trim())
       .filter(Boolean),
     idleTimeoutMs: Number(process.env.SHELL_IDLE_TIMEOUT_MS || 15 * 60 * 1000),
-    maxSessions: Number(process.env.SHELL_MAX_SESSIONS || 2),
+    maxSessions: Number(process.env.SHELL_MAX_SESSIONS || 8),
     shellCommand: process.env.SHELL_COMMAND || process.env.SHELL || '/bin/bash',
     usePty: process.env.SHELL_USE_PTY ? process.env.SHELL_USE_PTY !== '0' : true,
     ptyFactory: ptyFactoryFn,

@@ -8,7 +8,7 @@ export const TEST_CATEGORIES = [
     name: 'Code Integrity',
     script: 'scripts/test-integrity-suite.mjs',
     npm: 'test:integrity-61',
-    tests: 75,
+    tests: 101,
     ci: true,
     iphonePull: true,
     description: 'Regex/static assertions on core UI, API, proxy, security modules',
@@ -78,20 +78,20 @@ export const TEST_CATEGORIES = [
     name: 'iPhone 17 Air Static',
     script: 'scripts/test-iphone17-air-300.mjs',
     npm: 'test:iphone17-static',
-    tests: 260,
+    tests: 280,
     ci: true,
     iphonePull: true,
-    description: '260 source-pattern tests across 8 iPhone modules (#001–#260)',
+    description: '280 source-pattern tests across 9 iPhone modules (#001–#280)',
   },
   {
     id: 'iphone17-live',
     name: 'iPhone 17 Air Live (Playwright)',
     script: 'scripts/iphone17-playwright/playwright.config.ts',
     npm: 'test:iphone17-live',
-    tests: 50,
+    tests: 79,
     ci: false,
     iphonePull: false,
-    description: 'Playwright device profile tests #251–#300 (needs running :3322)',
+    description: 'Playwright device profile tests #251–#327 (needs running :3322)',
   },
   {
     id: 'pwa',
@@ -154,6 +154,7 @@ export const IPHONE17_STATIC_MODULES = [
   '06-haptics-audio',
   '07-webgl-particles',
   '08-ui-animations',
+  '09-ui-ux-hierarchy',
 ];
 
 export function countNumberedTests() {
