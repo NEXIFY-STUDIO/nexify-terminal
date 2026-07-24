@@ -38,7 +38,13 @@ async function openOrCreateTextFile(page: Page) {
 
 test('#321 Files: open or create editable text file', async ({ page }) => {
   await openOrCreateTextFile(page);
-  await expect(page.getByRole('button', { name: /Save Changes/i })).toBeVisible({ timeout: 12000 });
+  const saveBtn = page.getByRole('button', { name: /Save Changes/i });
+  await expect(saveBtn).toBeVisible({ timeout: 12000 });
+  const box = await saveBtn.boundingBox();
+  const vh = await page.evaluate(() => window.innerHeight);
+  expect(box).toBeTruthy();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(vh);
 });
 
 test('#322 Files: editor textarea visible with content area', async ({ page }) => {
@@ -194,4 +200,21 @@ test('#327 export markdown redacts PIN and API keys', async ({ page }) => {
   expect(captured).toMatch(/\[REDACTED\]/);
   expect(captured).not.toMatch(/sk-leakedsecret99/);
   expect(captured).not.toContain(PIN);
+});
+
+test('#328 Files: swipe-right from editor header returns to list', async ({ page }) => {
+  await openOrCreateTextFile(page);
+  const header = page.getByTestId('files-editor-header');
+  await expect(header).toBeVisible();
+  const box = await header.boundingBox();
+  expect(box).toBeTruthy();
+  const y = box!.y + box!.height / 2;
+  const startX = box!.x + 12;
+  const endX = startX + 100;
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await page.mouse.move(endX, y, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByPlaceholder(/Search in folder/i)).toBeVisible({ timeout: 8000 });
+  await expect(page.getByTestId('files-editor-pane')).toBeHidden();
 });

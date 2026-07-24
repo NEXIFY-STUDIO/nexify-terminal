@@ -34,7 +34,7 @@ export async function gotoTab(page: Page, name: TabName) {
   if (primaryId) {
     const btn = page.getByTestId(primaryId);
     await expect(btn).toBeVisible({ timeout: 15000 });
-    await btn.click({ force: true });
+    await btn.click();
     return;
   }
 
@@ -42,11 +42,15 @@ export async function gotoTab(page: Page, name: TabName) {
   if (!overflowId) throw new Error(`Unknown tab ${name}`);
   const more = page.getByTestId('view-tab-more');
   await expect(more).toBeVisible({ timeout: 15000 });
-  await more.click({ force: true });
-  await expect(page.getByText('More views')).toBeVisible({ timeout: 8000 });
-  const item = page.locator(`[data-testid="${overflowId}"]:visible`).first();
+  await more.click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet).toBeVisible({ timeout: 8000 });
+  await expect(sheet.getByText('More views')).toBeVisible({ timeout: 5000 });
+  const item = sheet.getByTestId(overflowId);
   await expect(item).toBeVisible({ timeout: 8000 });
-  await item.evaluate((el: HTMLElement) => el.click());
+  await item.scrollIntoViewIfNeeded();
+  await item.click();
+  await expect(sheet).toBeHidden({ timeout: 8000 }).catch(() => {});
 }
 
 export async function assertNoDocumentScroll(page: Page) {

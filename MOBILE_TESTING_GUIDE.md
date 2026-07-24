@@ -1,69 +1,86 @@
 # Nexify Terminal — iPhone 17 Air Testing Guide
 
 **Device:** iPhone 17 Air · 402×874px · Dynamic Island · DPR 3.0  
-**Projekt:** `/Users/erikbabcan/aaa-terminalnexify2-with-v-main`  
+**Projekt:** `/Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main`  
 **iPhone URL:** `http://100.103.0.38:3322` (Tailscale → Mac)  
-**PIN:** `0000`  
-**Posledná aktualizácia:** 2026-07-06 · E2E 451/451 ✅
+**PIN:** z `.env.local` (`NEXT_PUBLIC_PASSCODE`) alebo device-profile fallback  
+**Posledná aktualizácia:** 2026-07-24 · integrity 105 · static 280 · live 80 (#251–#328)
 
 ---
 
-## Jeden príkaz — full test (Mac)
+## Gate (povinné pred merge)
 
 ```bash
-cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main && pnpm run test:e2e
+cd /Users/erikbabcan/HUB/01-Projekty/aaa-terminalnexify2-with-v-main
+pnpm test:integrity-60
+pnpm test:iphone17-static
+pnpm test:e2e
 ```
 
-Potom reštart stacku:
+Live Playwright (samostatne — potrebuje bežiaci stack):
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
+pnpm dev:all          # :3322 + hack-api :3021 + ai-proxy
+pnpm test:iphone17-live
 ```
+
+Alebo jeden príkaz (štart + healthcheck + live + teardown):
+
+```bash
+pnpm test:iphone17-live:ci
+```
+
+GitHub Actions job **`iphone17-live`** (po `test`) spúšťa ten istý wrapper.
 
 ---
 
-## iPhone 17 Air — 330 test suite (hybrid)
+## Live CI cesta (Playwright na Macu)
+
+1. **Stack**
+   ```bash
+   pnpm install
+   npx playwright install chromium   # raz
+   pnpm dev:all
+   ```
+   Overenie: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3322/` → `200`
+
+2. **Shell API**  
+   `hacking-api` loguje `shell spawn mode=pty|pipe`.  
+   Na Node 24 / broken `node-pty` je default **`pipe`** (deterministický fallback).  
+   Vynútiť: `SHELL_USE_PTY=0` v `.env.local`.
+
+3. **Live suite**
+   ```bash
+   pnpm test:iphone17-live
+   ```
+   Zahŕňa lockscreen + authenticated + screens + **operator #321–#328**.
+   CI: `pnpm test:iphone17-live:ci` alebo Actions job `iphone17-live`.
+
+4. **CI tip**  
+   Spustiť live job až po `dev:all` healthchecke; bez `:3322` sa testy skip/failujú.  
+   Odporúčaný order v pipeline: `integrity-60` → `iphone17-static` → `e2e` → (optional) `iphone17-live`.
+
+---
+
+## iPhone 17 Air — hybrid suite
 
 | Príkaz | Čo beží |
 |--------|---------|
 | `pnpm run test:e2e` | lint + core + github-iphone + iPhone static finalize |
-| `pnpm run test:iphone17-static` | #001–#260 (8 modulov) |
-| `pnpm run test:iphone17-300` | 260 static + 70 Playwright live (screens #301–#320) |
-| `pnpm run test:iphone17-live` | Playwright lockscreen + authenticated + screens |
+| `pnpm run test:iphone17-static` | #001–#280 (9 modulov) |
+| `pnpm run test:iphone17-300` | 280 static + live orchestrátor |
+| `pnpm run test:iphone17-live` | Playwright #251–#327 (79 testov) |
 | `pnpm run test:github-iphone` | post-`git pull` integrity |
 | `pnpm run test:catalog` | prehľad kategórií |
 
-Playwright (prvýkrát):
-
-```bash
-pnpm install && npx playwright install chromium
-```
-
-### Static moduly (#001–#260)
-
-| Modul | IDs | Count | Focus |
-|-------|-----|-------|-------|
-| Viewport & Display | #001–#040 | 40 | viewport meta, overflow lock |
-| PWA & Standalone | #041–#075 | 35 | manifest, SW, icons |
-| Safe Area & Dynamic Island | #076–#105 | 30 | env(safe-area-inset-*) |
-| Lockscreen & Auth | #106–#140 | 35 | PIN, WebAuthn |
-| Gestures & Navigation | #141–#180 | 40 | swipe, long-press, paste, dual-chat |
-| Haptics & Audio | #181–#205 | 25 | vibrate + Web Audio fallback |
-| WebGL & Particles | #206–#240 | 35 | orb, dpr throttle |
-| UI Animations | #241–#260 | 20 | pulse, slide-in |
-
-### Live Playwright (#251–#320)
+### Live bloky
 
 | Blok | IDs | Focus |
 |------|-----|-------|
 | Lockscreen | #251–#260 | PIN unlock |
-| Viewport / tabs / safe-area / WebGL | #261–#294 | iPhone 17 Air stability |
-| Screen panels | #295–#300 | Terminal, Files, System, Insolvency, Dual Coder |
-| Screens E2E | #301–#320 | all 6 tabs, hit targets, long-press, paste fallback |
-
-Vyžaduje bežiaci stack: `pnpm dev:all` na `:3322`.
-
-Vyžaduje bežiaci `pnpm dev:all` na `:3322`.
+| Authenticated | #261–#300 | tabs, safe-area, WebGL, panels |
+| Screens | #301–#320 | 6 tabs, 44px hit targets, paste |
+| Operator | #321–#328 | Files roundtrip, swipe-back, `$` shell, voice, export redact |
 
 ---
 
@@ -71,11 +88,11 @@ Vyžaduje bežiaci `pnpm dev:all` na `:3322`.
 
 1. Tailscale **ON** na iPhone aj Macu  
 2. Safari → `http://100.103.0.38:3322`  
-3. PIN **0000**  
+3. PIN z `.env.local`  
 4. **Zdieľať → Pridať na plochu** (PWA standalone)  
-5. Otestuj: swipe záložky, chat input, tap-to-run `$` chips, voice (drž mikrofón), `export`
+5. Otestuj: tabs (≥44px), `$` chip, voice hold→Enter, `export`, Files Save above-the-fold
 
-### Operátor na iPhone (v1–v10)
+### Operátor (v1–v10)
 
 | Akcia | Správanie |
 |-------|-----------|
@@ -83,67 +100,6 @@ Vyžaduje bežiaci `pnpm dev:all` na `:3322`.
 | `$ cmd` / `/ cmd` | Shell na Macu + follow-up |
 | `help` / `status` / `clear` / `export` | Meta príkazy |
 | Drž mikrofón | Speech → input → **Enter** |
-| Export menu | Markdown share / clipboard |
+| Export | Markdown share / clipboard (`[REDACTED]`) |
 
 Megaprompt: `services/ai-proxy/ai-proxy.mjs` · QA prompt: `IPHONE17_AIR_PROMPT.md`
-
----
-
-## Viewport & stabilita
-
-- **Žiadny scroll** — `html/body` fixed, `overflow: hidden`  
-- **Žiadny zoom** — `userScalable: false`, min/max scale 1  
-- **Safe area** — `viewport-fit=cover`, padding pre Dynamic Island  
-- **Touch** — `touch-action: manipulation` na tlačidlách  
-
-### Očakávané hodnoty
-
-```
-innerWidth:  402px (alebo device-width v standalone)
-innerHeight: ~874px
-scrollY/X:   0
-```
-
----
-
-## Manuálny checklist (iPhone)
-
-- [ ] `pnpm run test:e2e` green na Macu  
-- [ ] Health 200: `:3322/api/health`, `:3021/health`, `:8788/health`  
-- [ ] PWA na ploche otvorí standalone (bez Safari chrome)  
-- [ ] PIN 0000 odomkne lockscreen  
-- [ ] Swipe: Chat ↔ Terminal ↔ Files ↔ System  
-- [ ] Chat: text → AI chips → tap `$` beží na Macu  
-- [ ] Voice: drž mikrofón → text → Enter  
-- [ ] `export` alebo Export → Markdown  
-- [ ] Cyan **Manuál** v headeri funguje  
-- [ ] Žiadne chyby v Safari konzole (Develop → iPhone)
-
----
-
-## Po `git pull`
-
-```bash
-cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main
-git pull origin main
-pnpm install
-pnpm run test:e2e
-launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
-```
-
----
-
-## Súbory
-
-| Cesta | Účel |
-|-------|------|
-| `IPHONE17_AIR_PROMPT.md` | ~2000 znakov QA prompt |
-| `scripts/test-iphone17-air-300.mjs` | Hybrid runner |
-| `scripts/iphone17-tests/` | 8 static modulov |
-| `scripts/iphone17-playwright/` | Live #251–#300 |
-| `scripts/test-e2e-finalize.mjs` | E2E orchestrátor |
-| `scripts/test-catalog.mjs` | 14 test kategórií |
-
----
-
-**14 test kategórií · 505 číslovaných v katalógu · 451 E2E static · iPhone pull-safe: 7**

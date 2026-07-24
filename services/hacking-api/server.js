@@ -10,48 +10,19 @@ import os from 'node:os';
 import fsPromises from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { executeHackTool } from './executor.js';
 import { createShellSessionManager } from './shell.js';
+import { resolveShellPty } from './resolveShellPty.mjs';
 
 const DEFAULT_ALLOWED_ORIGIN = 'http://localhost:6767';
 const API_VERSION = '1.0.0';
 
-// Best-effort node-pty load. When present, the shell manager will spawn child
-// processes through a real PTY (required for TUI apps like @github/copilot).
-// When absent or broken (missing native binding / posix_spawnp), fall back to
-// script(1) or /bin/sh -c so remote shell stays usable.
-let ptyFactoryFn = null;
-try {
-  const require = createRequire(import.meta.url);
-  const ptyMod = require('node-pty');
-  const spawnFn = ptyMod.spawn || ptyMod.default?.spawn || null;
-  if (typeof spawnFn === 'function') {
-    // Probe once — a loadable JS wrapper with a broken .node still "requires".
-    try {
-      const probe = spawnFn('/bin/sh', ['-c', 'exit 0'], {
-        name: 'xterm-256color',
-        cols: 40,
-        rows: 12,
-        cwd: process.cwd(),
-      });
-      try {
-        probe.kill();
-      } catch {
-        // ignore
-      }
-      ptyFactoryFn = spawnFn;
-    } catch (probeErr) {
-      console.warn(
-        `[hacking-api] node-pty unusable (${probeErr?.message || probeErr}); using non-PTY shell fallback`
-      );
-      ptyFactoryFn = null;
-    }
-  }
-} catch {
-  ptyFactoryFn = null;
-}
+const shellPty = resolveShellPty();
+const ptyFactoryFn = shellPty.ptyFactory;
+const shellUsePtyEffective = shellPty.mode === 'pty';
+console.warn(`[hacking-api] shell spawn mode=${shellPty.mode} (${shellPty.reason})`);
+
 
 function getSingleQueryValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -103,7 +74,10 @@ export function createApp({
     idleTimeoutMs: Number(process.env.SHELL_IDLE_TIMEOUT_MS || 15 * 60 * 1000),
     maxSessions: Number(process.env.SHELL_MAX_SESSIONS || 8),
     shellCommand: process.env.SHELL_COMMAND || process.env.SHELL || '/bin/bash',
-    usePty: process.env.SHELL_USE_PTY ? process.env.SHELL_USE_PTY !== '0' : true,
+    // Prefer explicit env; otherwise follow probe result (broken node-pty → pipe).
+    usePty: process.env.SHELL_USE_PTY
+      ? process.env.SHELL_USE_PTY !== '0'
+      : shellUsePtyEffective,
     ptyFactory: ptyFactoryFn,
   }) : null,
 } = {}) {

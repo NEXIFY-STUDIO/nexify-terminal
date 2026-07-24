@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * iPhone 17 Air Master Test Suite — 359 tests (280 static + 79 live Playwright)
- * Live: lockscreen + authenticated + screens + operator #321–#327
+ * iPhone 17 Air Master Test Suite — 360 tests (280 static + 80 live Playwright)
+ * Live: lockscreen + authenticated + screens + operator #321–#328
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -14,8 +14,8 @@ const args = process.argv.slice(2);
 const staticOnly = args.includes('--static-only');
 const liveOnly = args.includes('--live-only');
 
-/** Live Playwright projects (setup + lockscreen + authenticated incl. #321–#327) */
-const LIVE_COUNT = 79;
+/** Live Playwright projects (setup + lockscreen + authenticated incl. #321–#328) */
+const LIVE_COUNT = 80;
 const SUITE_TOTAL = STATIC_COUNT + LIVE_COUNT;
 
 console.log(`📱 iPhone 17 Air Test Suite — ${SUITE_TOTAL} Tests (Hybrid)\n`);

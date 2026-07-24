@@ -64,10 +64,17 @@ test('#309 Dual Coder: Vibe Coder and Gemini Coder labels', async ({ page }) => 
   await expect(page.getByText(/Gemini Coder/i)).toBeVisible({ timeout: 8000 });
 });
 
-test('#310 Terminal: shell chrome visible and scroll locked', async ({ page }) => {
+test('#310 Terminal: shell chrome visible, scroll locked, xterm fitted', async ({ page }) => {
+  await gotoTab(page, 'Chat');
   await gotoTab(page, 'Terminal');
   await expect(page.getByText(/Nexify Interactive Shell/i)).toBeVisible({ timeout: 8000 });
   await assertNoDocumentScroll(page);
+  const screen = page.locator('.xterm-screen').first();
+  await expect(screen).toBeVisible({ timeout: 10000 });
+  const box = await screen.boundingBox();
+  expect(box).toBeTruthy();
+  expect(box!.width).toBeGreaterThan(80);
+  expect(box!.height).toBeGreaterThan(40);
 });
 
 // --- #311–#316: per-tab header controls within viewport height ---

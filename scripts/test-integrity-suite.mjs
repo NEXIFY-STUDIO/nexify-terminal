@@ -19,6 +19,7 @@ const filesToTest = {
   nextConfig: path.join(rootDir, 'next.config.mjs'),
   aiProxy: path.join(rootDir, 'services/ai-proxy/ai-proxy.mjs'),
   sessionExport: path.join(rootDir, 'lib/operator/sessionExport.mjs'),
+  resolveShellPty: path.join(rootDir, 'services/hacking-api/resolveShellPty.mjs'),
   voiceInput: path.join(rootDir, 'lib/operator/voiceInput.mjs'),
   sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.ts'),
   authGuard: path.join(rootDir, 'components/auth-guard.tsx'),
@@ -29,7 +30,7 @@ const filesToTest = {
   globals: path.join(rootDir, 'app/globals.css'),
 };
 
-console.log('🔍 Running Master Integrity Test Suite (101 Assertions)...\n');
+console.log('🔍 Running Master Integrity Test Suite (105 Assertions)...\n');
 
 let failed = 0;
 let passed = 0;
@@ -93,6 +94,7 @@ const assertionsList = [
       { name: '16. FolderIcon presence', pattern: /Folder/ },
       { name: '17. FileIcon presence', pattern: /File/ },
       { name: '18. Active file state', pattern: /activeFile/ },
+      { name: '18b. Mobile editor pane testid', pattern: /files-editor-pane/ },
       { name: '19. Content editing textarea', pattern: /<textarea/ },
       { name: '20. Image preview tag', pattern: /<img/ }
     ]
@@ -280,6 +282,15 @@ const assertionsList = [
       { name: '71. voice in help report', pattern: /Voice \(v9\)/ },
     ]
   },
+  {
+    target: 'resolveShellPty',
+    path: filesToTest.resolveShellPty,
+    assertions: [
+      { name: '72. resolveShellPty export', pattern: /export function resolveShellPty/ },
+      { name: '73. SHELL_USE_PTY env gate', pattern: /SHELL_USE_PTY/ },
+      { name: '74. pty probe spawn', pattern: /exit 0/ },
+    ]
+  },
 ];
 
 assertionsList.forEach(group => {
@@ -287,11 +298,11 @@ assertionsList.forEach(group => {
 });
 
 console.log('\n==================================================');
-console.log(`Integrity Check Result: ${passed}/101 Passed`);
+console.log(`Integrity Check Result: ${passed}/105 Passed`);
 console.log('==================================================');
 
-if (failed === 0 && passed === 101) {
-  console.log('✅ ALL 101 INTEGRITY CHECKS PASSED');
+if (failed === 0 && passed === 105) {
+  console.log('✅ ALL 105 INTEGRITY CHECKS PASSED');
   process.exit(0);
 } else {
   console.error(`❌ ${failed} INTEGRITY CHECKS FAILED (passed=${passed})`);

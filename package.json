@@ -24,6 +24,7 @@
     "test:iphone17-300": "node scripts/test-iphone17-air-300.mjs",
     "test:iphone17-static": "node scripts/test-iphone17-air-300.mjs --static-only",
     "test:iphone17-live": "playwright test -c scripts/iphone17-playwright/playwright.config.ts",
+    "test:iphone17-live:ci": "bash scripts/ci-iphone17-live.sh",
     "test:button-hit-targets": "playwright test -c scripts/iphone17-playwright/button-hit-targets.config.ts",
     "test:lovable-editor-split": "node scripts/test-lovable-editor-split.mjs",
     "test:nexify-operator": "node scripts/test-nexify-operator.mjs",

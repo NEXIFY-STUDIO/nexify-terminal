@@ -221,25 +221,11 @@ export function createShellSessionManager({
         });
         child = adaptPtyToChild(ptyProc);
       } catch {
-        // Broken native binding (e.g. posix_spawnp) — keep shell usable.
-        child = spawnWithoutPty();
-      }
-    } else if (usePty) {
-      const isBsdScript = scriptPlatform === 'darwin' || scriptPlatform === 'freebsd';
-      const spawnBin = scriptCommand;
-      const spawnArgs = isBsdScript
-        ? ['-q', '/dev/null', '/bin/sh', '-c', innerCommand]
-        : ['-q', '-c', innerCommand, '/dev/null'];
-      try {
-        child = spawnProcess(spawnBin, spawnArgs, {
-          cwd: resolvedCwd,
-          env: shellEnv,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-      } catch {
+        // Probe can pass while later spawns fail — always keep shell usable.
         child = spawnWithoutPty();
       }
     } else {
+      // Pipe mode (deterministic fallback). Skip flaky script(1) on Darwin.
       child = spawnWithoutPty();
     }
 

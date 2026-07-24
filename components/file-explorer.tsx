@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Folder,
   FolderOpen,
@@ -45,6 +45,33 @@ export function FileExplorer() {
   const [activeFile, setActiveFile] = useState<{ path: string; name: string; content?: string; isImage?: boolean; dataUrl?: string } | null>(null)
   const [editorContent, setEditorContent] = useState("")
   const [saving, setSaving] = useState(false)
+  const swipeStartRef = useRef<{ x: number; y: number; edge: boolean } | null>(null)
+
+  const closeEditor = () => setActiveFile(null)
+
+  /** Mobile swipe-right from header or left 24px edge → back to file list. */
+  const onEditorPointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement
+    const isHeader = Boolean(target.closest("[data-testid='files-editor-header']"))
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const fromLeftEdge = e.clientX - rect.left <= 24
+    if (!isHeader && !fromLeftEdge) {
+      swipeStartRef.current = null
+      return
+    }
+    swipeStartRef.current = { x: e.clientX, y: e.clientY, edge: fromLeftEdge || isHeader }
+  }
+
+  const onEditorPointerUp = (e: React.PointerEvent) => {
+    const start = swipeStartRef.current
+    swipeStartRef.current = null
+    if (!start) return
+    const dx = e.clientX - start.x
+    const dy = Math.abs(e.clientY - start.y)
+    if (dx >= 72 && dy < 48) {
+      closeEditor()
+    }
+  }
 
   // Fetch file list
   const loadDirectory = async (path: string) => {
@@ -229,10 +256,14 @@ export function FileExplorer() {
   const pathBreadcrumbs = currentPath.split("/").filter(Boolean)
 
   return (
-    <div className="w-full h-full grid grid-cols-1 md:grid-cols-12 gap-5 overflow-hidden">
+    <div className="w-full h-full grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-5 overflow-hidden">
       
-      {/* LEFT COLUMN: Files Navigation (5 cols) */}
-      <div className="md:col-span-5 bg-[#09090b]/80 border border-border/40 rounded-2xl p-4 flex flex-col overflow-hidden backdrop-blur-xl shadow-2xl">
+      {/* LEFT COLUMN: Files Navigation — collapses on mobile when editing */}
+      <div
+        className={`md:col-span-5 bg-[#09090b]/80 border border-border/40 rounded-2xl p-3 md:p-4 flex flex-col overflow-hidden backdrop-blur-xl shadow-2xl ${
+          activeFile ? 'hidden md:flex' : 'flex min-h-0'
+        }`}
+      >
         {/* Navigation Breadcrumbs */}
         <div className="flex items-center gap-2 mb-3 overflow-x-auto whitespace-nowrap scrollbar-none border-b border-border/30 pb-3">
           <Button
@@ -366,24 +397,38 @@ export function FileExplorer() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: File Editor / Viewer (7 cols) */}
-      <div className="md:col-span-7 bg-[#09090b]/80 border border-border/40 rounded-2xl p-4 flex flex-col overflow-hidden backdrop-blur-xl shadow-2xl">
+      {/* RIGHT COLUMN: File Editor — full-bleed on mobile when a file is open */}
+      <div
+        className={`md:col-span-7 bg-[#09090b]/80 border border-border/40 rounded-2xl p-3 md:p-4 flex flex-col overflow-hidden backdrop-blur-xl shadow-2xl min-h-0 ${
+          activeFile ? 'flex col-span-1 h-full min-h-[70dvh] md:min-h-0' : 'hidden md:flex'
+        }`}
+        data-testid="files-editor-pane"
+        onPointerDown={activeFile ? onEditorPointerDown : undefined}
+        onPointerUp={activeFile ? onEditorPointerUp : undefined}
+        onPointerCancel={() => {
+          swipeStartRef.current = null
+        }}
+      >
         {activeFile ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Editor Top Bar */}
-            <div className="flex items-center justify-between border-b border-border/30 pb-3 mb-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-accent" />
-                <span className="text-xs font-semibold text-foreground/90 tracking-wide font-mono">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            {/* Editor Top Bar — sticky Save above the fold on 402×874 */}
+            <div
+              data-testid="files-editor-header"
+              className="flex items-center justify-between gap-2 border-b border-border/30 pb-2 mb-2 shrink-0 sticky top-0 z-10 bg-[#09090b]/95 backdrop-blur-sm touch-pan-y"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-accent shrink-0" />
+                <span className="text-xs font-semibold text-foreground/90 tracking-wide font-mono truncate">
                   {activeFile.name}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {!activeFile.isImage && (
                   <Button
                     onClick={handleSaveFile}
                     disabled={saving}
-                    className="active:scale-[0.98] gap-1.5 bg-gradient-to-br from-accent via-gray-900 to-black hover:from-accent hover:to-black text-white text-xs px-3 h-8 rounded-xl shadow-xl font-medium"
+                    data-testid="files-save-changes"
+                    className="active:scale-[0.98] gap-1.5 bg-gradient-to-br from-accent via-gray-900 to-black hover:from-accent hover:to-black text-white text-xs px-3 h-9 min-h-[36px] rounded-xl shadow-xl font-medium"
                   >
                     <Save className="w-3.5 h-3.5" />
                     {saving ? "Saving..." : "Save Changes"}
@@ -391,8 +436,8 @@ export function FileExplorer() {
                 )}
                 <Button
                   variant="ghost"
-                  className="active:scale-[0.98] text-muted-foreground hover:text-white text-xs px-3 h-8 rounded-xl hover:bg-secondary/40"
-                  onClick={() => setActiveFile(null)}
+                  className="active:scale-[0.98] text-muted-foreground hover:text-white text-xs px-3 h-9 min-h-[36px] rounded-xl hover:bg-secondary/40"
+                  onClick={closeEditor}
                 >
                   Close
                 </Button>

@@ -229,9 +229,9 @@ test('30 — persona test count ≥ 22', () => {
   assert(/22 tests/.test(persona), 'persona test header outdated');
 });
 
-test('31 — integrity suite count ≥ 101', () => {
+test('31 — integrity suite count ≥ 105', () => {
   const integrity = read('scripts/test-integrity-suite.mjs');
-  assert(/101 Assertions/.test(integrity), 'integrity count outdated');
+  assert(/105 Assertions/.test(integrity), 'integrity count outdated');
 });
 
 test('32 — iPhone index validates 280 static', () => {

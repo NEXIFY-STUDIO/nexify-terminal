@@ -295,12 +295,16 @@ export function NexifyHeader({
 
       {/* Overflow views sheet */}
       <Sheet open={viewsMoreOpen} onOpenChange={setViewsMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl bg-zinc-950/95 border-t border-border/40">
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl bg-zinc-950/95 border-t border-border/40 max-h-[min(85dvh,640px)] overflow-y-auto"
+          data-testid="more-views-sheet"
+        >
           <SheetHeader>
             <SheetTitle className="text-sm">More views</SheetTitle>
             <SheetDescription className="text-xs">Insolvency and Dual Coder</SheetDescription>
           </SheetHeader>
-          <div className="mt-4 grid gap-2 pb-6">
+          <div className="mt-4 grid gap-2 pb-8">
             {OVERFLOW_VIEWS.map((view) => {
               const Icon = view.icon
               return (
@@ -308,9 +312,9 @@ export function NexifyHeader({
                   key={view.id}
                   type="button"
                   data-testid={`view-overflow-${view.id}`}
-                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm text-left transition-colors ${
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 min-h-11 text-sm text-left transition-colors ${
                     viewMode === view.id
-                      ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100"
+                      ? "border-accent/40 bg-accent/10 text-accent"
                       : "border-border/40 bg-secondary/30 hover:bg-secondary/50"
                   }`}
                   onClick={() => {
