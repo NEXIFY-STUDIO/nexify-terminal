@@ -19,11 +19,18 @@ const filesToTest = {
   nextConfig: path.join(rootDir, 'next.config.mjs'),
   aiProxy: path.join(rootDir, 'services/ai-proxy/ai-proxy.mjs'),
   sessionExport: path.join(rootDir, 'lib/operator/sessionExport.mjs'),
+  resolveShellPty: path.join(rootDir, 'services/hacking-api/resolveShellPty.mjs'),
   voiceInput: path.join(rootDir, 'lib/operator/voiceInput.mjs'),
-  sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.mjs'),
+  sessionHelp: path.join(rootDir, 'lib/operator/sessionHelp.ts'),
+  authGuard: path.join(rootDir, 'components/auth-guard.tsx'),
+  terminalView: path.join(rootDir, 'components/terminal-view.tsx'),
+  sidebar: path.join(rootDir, 'components/sidebar.tsx'),
+  systemMonitor: path.join(rootDir, 'components/system-monitor.tsx'),
+  insolvency: path.join(rootDir, 'components/insolvency-monitor.tsx'),
+  globals: path.join(rootDir, 'app/globals.css'),
 };
 
-console.log('🔍 Running Master Integrity Test Suite (75 Assertions)...\n');
+console.log('🔍 Running Master Integrity Test Suite (105 Assertions)...\n');
 
 let failed = 0;
 let passed = 0;
@@ -59,12 +66,20 @@ const assertionsList = [
       { name: '6. Message state hook', pattern: /useState</ },
       { name: '7. Auto-scroll ref hook', pattern: /useRef</ },
       { name: '8. Lucide icon (Terminal)', pattern: /<Terminal/ },
-      { name: '9. Tailwind bg-background', pattern: /bg-background/ },
+      { name: '9. Tailwind bg-background', pattern: /bg-background|NexifyHeader/ },
       { name: '10. API route fetch call', pattern: /fetch\(['"`]\/api\// },
-      { name: '10b. In-app Manuál button', pattern: /NexifyManualSheet/ },
+      { name: '10b. In-app Manuál button', pattern: /NexifyHeader|NexifyManualSheet/ },
       { name: '10c. Operator export command', pattern: /isExportSessionCommand/ },
       { name: '10d. Voice press-and-hold mic', pattern: /handleMicPointerDown/ },
       { name: '10e. Session markdown export', pattern: /formatSessionMarkdown/ },
+      { name: '10f. executePasteText', pattern: /executePasteText/ },
+      { name: '10g. wasLongPressedRef', pattern: /wasLongPressedRef/ },
+      { name: '10h. Paste fallback dialog', pattern: /Vložiť text \(PWA Fallback\)/ },
+      { name: '10i. DualChatArea import', pattern: /DualChatArea/ },
+      { name: '10j. dual-chat view mode', pattern: /'dual-chat'/ },
+      { name: '10k. touchend passive false', pattern: /passive:\s*false/ },
+      { name: '10l. operator-status strip', pattern: /operator-status/ },
+      { name: '10m. Phone-first header', pattern: /NexifyHeader|--tab-h|nexify-header/ },
     ]
   },
   {
@@ -79,6 +94,7 @@ const assertionsList = [
       { name: '16. FolderIcon presence', pattern: /Folder/ },
       { name: '17. FileIcon presence', pattern: /File/ },
       { name: '18. Active file state', pattern: /activeFile/ },
+      { name: '18b. Mobile editor pane testid', pattern: /files-editor-pane/ },
       { name: '19. Content editing textarea', pattern: /<textarea/ },
       { name: '20. Image preview tag', pattern: /<img/ }
     ]
@@ -102,7 +118,59 @@ const assertionsList = [
       { name: '27. Html lang attribute', pattern: /<html\s+lang/ },
       { name: '28. Body tag', pattern: /<body/ },
       { name: '29. Children prop typing', pattern: /children:\s*React\.ReactNode/ },
-      { name: '30. Metadata export', pattern: /export\s+(const|let|var)\s+metadata/ }
+      { name: '30. Metadata export', pattern: /export\s+(const|let|var)\s+metadata/ },
+      { name: '30b. viewportFit cover', pattern: /viewportFit:\s*"cover"/ },
+    ]
+  },
+  {
+    target: 'globals',
+    path: filesToTest.globals,
+    assertions: [
+      { name: '30c. safe-area-inset-top var', pattern: /--safe-area-inset-top:\s*env\(safe-area-inset-top/ },
+      { name: '30d. scrollable-container', pattern: /\.scrollable-container/ },
+    ]
+  },
+  {
+    target: 'authGuard',
+    path: filesToTest.authGuard,
+    assertions: [
+      { name: '30e. AuthGuard export', pattern: /export\s+function\s+AuthGuard/ },
+      { name: '30f. NEXIFY TERMINAL heading', pattern: /NEXIFY TERMINAL/ },
+      { name: '30g. PIN error message', pattern: /Nesprávny PIN/ },
+    ]
+  },
+  {
+    target: 'terminalView',
+    path: filesToTest.terminalView,
+    assertions: [
+      { name: '30h. TerminalView export', pattern: /export\s+function\s+TerminalView/ },
+      { name: '30i. handleResize listener', pattern: /window\.addEventListener\(\s*["']resize["']\s*,\s*handleResize/ },
+      { name: '30j. resize cleanup same ref', pattern: /window\.removeEventListener\(\s*["']resize["']\s*,\s*handleResize/ },
+      { name: '30k. isDestroyed guard', pattern: /let isDestroyed = false/ },
+      { name: '30l. term dispose', pattern: /\.dispose\(\)/ },
+    ]
+  },
+  {
+    target: 'sidebar',
+    path: filesToTest.sidebar,
+    assertions: [
+      { name: '30m. Sidebar export', pattern: /export\s+function\s+Sidebar/ },
+    ]
+  },
+  {
+    target: 'systemMonitor',
+    path: filesToTest.systemMonitor,
+    assertions: [
+      { name: '30n. SystemMonitor export', pattern: /export\s+function\s+SystemMonitor/ },
+      { name: '30o. CPU Usage marker', pattern: /CPU Usage/ },
+    ]
+  },
+  {
+    target: 'insolvency',
+    path: filesToTest.insolvency,
+    assertions: [
+      { name: '30p. InsolvencyMonitor export', pattern: /export\s+function\s+InsolvencyMonitor/ },
+      { name: '30q. partners search placeholder', pattern: /Search partners/ },
     ]
   },
   {
@@ -193,6 +261,8 @@ const assertionsList = [
     assertions: [
       { name: '65. formatSessionMarkdown', pattern: /export function formatSessionMarkdown/ },
       { name: '66. redactExportSecrets', pattern: /export function redactExportSecrets/ },
+      { name: '66b. PASSCODE in redact list', pattern: /PASSCODE/ },
+      { name: '66c. REDACTED replacement', pattern: /\[REDACTED\]/ },
       { name: '67. deliverSessionMarkdown', pattern: /export async function deliverSessionMarkdown/ },
     ]
   },
@@ -212,6 +282,15 @@ const assertionsList = [
       { name: '71. voice in help report', pattern: /Voice \(v9\)/ },
     ]
   },
+  {
+    target: 'resolveShellPty',
+    path: filesToTest.resolveShellPty,
+    assertions: [
+      { name: '72. resolveShellPty export', pattern: /export function resolveShellPty/ },
+      { name: '73. SHELL_USE_PTY env gate', pattern: /SHELL_USE_PTY/ },
+      { name: '74. pty probe spawn', pattern: /exit 0/ },
+    ]
+  },
 ];
 
 assertionsList.forEach(group => {
@@ -219,13 +298,13 @@ assertionsList.forEach(group => {
 });
 
 console.log('\n==================================================');
-console.log(`Integrity Check Result: ${passed}/75 Passed`);
+console.log(`Integrity Check Result: ${passed}/105 Passed`);
 console.log('==================================================');
 
-if (failed === 0 && passed === 75) {
-  console.log('✅ ALL 75 INTEGRITY CHECKS PASSED');
+if (failed === 0 && passed === 105) {
+  console.log('✅ ALL 105 INTEGRITY CHECKS PASSED');
   process.exit(0);
 } else {
-  console.error(`❌ ${failed} INTEGRITY CHECKS FAILED`);
+  console.error(`❌ ${failed} INTEGRITY CHECKS FAILED (passed=${passed})`);
   process.exit(1);
 }

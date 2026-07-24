@@ -15,7 +15,7 @@ const STEPS = [
   { name: 'Typecheck', cmd: 'pnpm', args: ['run', 'lint'] },
   { name: 'Core suite (test:all)', cmd: 'pnpm', args: ['run', 'test:all'] },
   { name: 'GitHub → iPhone integrity', cmd: 'node', args: ['scripts/test-github-iphone-integrity.mjs'] },
-  { name: 'iPhone 17 Air static (#001–#260)', cmd: 'node', args: ['scripts/test-iphone17-air-300.mjs', '--static-only'] },
+  { name: 'iPhone 17 Air static (#001–#280)', cmd: 'node', args: ['scripts/test-iphone17-air-300.mjs', '--static-only'] },
 ];
 
 console.log('🏁 Nexify Terminal — E2E Finalize\n');

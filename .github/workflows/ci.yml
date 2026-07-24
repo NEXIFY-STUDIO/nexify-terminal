@@ -5,6 +5,7 @@ on:
     branches: [main, 'feature/**', 'cursor/**']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -22,7 +23,7 @@ jobs:
         run: |
           pnpm config set strict-dep-builds false
           pnpm install --frozen-lockfile
-          npm install --prefix services/hacking-api --ignore-scripts
+          npm install --prefix services/hacking-api
           npm install --prefix services/ai-proxy --ignore-scripts
       - name: Bootstrap CI env
         run: cp .env.ci .env.local
@@ -42,5 +43,32 @@ jobs:
           AI_PROXY_PORT: 8788
       - name: GitHub pull → iPhone integrity
         run: pnpm run test:github-iphone
-      - name: iPhone 17 Air static (250)
+      - name: iPhone 17 Air static (280)
         run: pnpm run test:iphone17-static
+
+  iphone17-live:
+    name: iPhone 17 Air live (Playwright)
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install deps
+        run: |
+          pnpm config set strict-dep-builds false
+          pnpm install --frozen-lockfile
+          npm install --prefix services/hacking-api
+          npm install --prefix services/ai-proxy --ignore-scripts
+      - name: Bootstrap CI env
+        run: cp .env.ci .env.local
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Live suite with stack healthcheck
+        run: bash scripts/ci-iphone17-live.sh

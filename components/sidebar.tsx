@@ -39,7 +39,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="p-3">
         <Button
           variant="secondary"
-          className="btn-3d btn-glow w-full justify-start gap-2 bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 font-medium"
+          className="active:scale-[0.98] w-full justify-start gap-2 bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 font-medium"
         >
           <MessageSquarePlus className="w-4 h-4" />
           New Chat
@@ -53,28 +53,28 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <div className="space-y-1">
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <MessageSquare className="w-4 h-4" />
               Chat
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium text-purple-400"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium text-purple-400"
             >
               <Sparkles className="w-4 h-4 text-purple-400" />
               Dual Coder
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <Archive className="w-4 h-4" />
               Archived
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <BookOpen className="w-4 h-4" />
               Library
@@ -88,35 +88,35 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           <div className="space-y-1">
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <FolderPlus className="w-4 h-4" />
               New Project
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <ImageIcon className="w-4 h-4" />
               Image
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <Presentation className="w-4 h-4" />
               Presentation
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <FileText className="w-4 h-4" />
               Riset
             </Button>
             <Button
               variant="ghost"
-              className="btn-3d w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
+              className="active:scale-[0.98] w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent font-medium"
             >
               <ImageIcon className="w-4 h-4" />
               Image
@@ -139,7 +139,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               Boost productivity with seamless automation and responsive AI, built to adapt to your needs.
             </p>
           </div>
-          <Button className="btn-3d btn-glow w-full bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-foreground border border-sidebar-border font-medium">
+          <Button className="active:scale-[0.98] w-full bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-foreground border border-sidebar-border font-medium">
             Upgrade
           </Button>
         </div>

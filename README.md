@@ -10,7 +10,7 @@
 | **UI port** | `3322` |
 | **Hack API (shell)** | `3021` |
 | **AI proxy** | `8788` |
-| **PIN (lockscreen)** | `2366` |
+| **PIN (lockscreen)** | vid `.env.local` → `NEXT_PUBLIC_PASSCODE` (nikdy necommitované) |
 | **Mac Tailscale IP** | `100.103.0.38` |
 | **iPhone Tailscale IP** | `100.103.153.97` |
 
@@ -105,7 +105,7 @@ cp .env.example .env.local
 Minimálne nastav:
 
 - `HACK_API_TOKEN`, `SHELL_TOKEN`, `NEXTAUTH_SECRET` — `openssl rand -hex 32`
-- `NEXT_PUBLIC_PASSCODE=2366`
+- `NEXT_PUBLIC_PASSCODE=0000`
 - `SHELL_CWD_ALLOWLIST=/Users/erikbabcan`
 - `TAILSCALE_ALLOWED_IP=100.103.153.97` (IP iPhonu v Tailscale)
 - `ALLOWED_ORIGIN` a `NEXT_PUBLIC_DEV_CONNECT_SRC` s Mac Tailscale IP `100.103.0.38:3322`
@@ -280,7 +280,7 @@ http://100.103.0.38:3322
 ### 7.3 Lockscreen
 
 1. Face ID / Touch ID (ak nakonfigurované), alebo
-2. PIN: **`2366`**
+2. PIN: **`0000`**
 
 ### 7.4 Pridanie na Home Screen (PWA)
 
@@ -394,7 +394,7 @@ Súbor: `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.local`
 
 | Premenná | Účel |
 |----------|------|
-| `NEXT_PUBLIC_PASSCODE` | PIN lockscreen (`2366`) |
+| `NEXT_PUBLIC_PASSCODE` | PIN lockscreen (`0000`) |
 | `TAILSCALE_ALLOWED_IP` | IP iPhonu povolená middleware (`100.103.153.97`) |
 | `SHELL_CWD_ALLOWLIST` | Kde shell smie `cd` (`/Users/erikbabcan`) |
 | `HACK_API_TOKEN` / `SHELL_TOKEN` | Tokeny medzi Next a hack-api |
@@ -475,7 +475,7 @@ GitHub Actions: `.github/workflows/ci.yml` — `lint` + `test:all` + `test:githu
 - Shell beží len v `SHELL_CWD_ALLOWLIST`
 - Tokeny (`HACK_API_TOKEN`, `SHELL_TOKEN`) len server-side — nikdy v prehliadači
 - Repozitár je **private** — secrets len v `.env.local` na Macu
-- PIN `2366` + voliteľný WebAuthn (Face ID)
+- PIN `0000` + voliteľný WebAuthn (Face ID)
 
 ---
 
@@ -496,7 +496,7 @@ GitHub Actions: `.github/workflows/ci.yml` — `lint` + `test:all` + `test:githu
 │  macOS Terminál        →  launchctl, pnpm dev:all, testy    │
 ├─────────────────────────────────────────────────────────────┤
 │  iPhone URL            →  http://100.103.0.38:3322          │
-│  PIN                   →  2366                              │
+│  PIN                   →  0000                              │
 │  help / status / clear →  návod / pamäť / wipe + reštart    │
 │  Reštart stacku        →  launchctl kickstart -k gui/$(id -u)/com.nexify.terminal │
 └─────────────────────────────────────────────────────────────┘
@@ -623,7 +623,7 @@ curl -s -X POST http://127.0.0.1:3322/api/ai \
 | 0 | Mac: `cd /Users/erikbabcan/aaa-terminalnexify2-with-v-main && pnpm run test:e2e` ✅ |
 | 1 | Tailscale ON (Mac `100.103.0.38`, iPhone `100.103.153.97`) |
 | 2 | Safari → `http://100.103.0.38:3322` |
-| 3 | PIN **`2366`** |
+| 3 | PIN **`0000`** |
 | 4 | PWA: Zdieľať → **Pridať na plochu** |
 | 5 | Swipe: Chat ↔ Terminal ↔ Files ↔ System |
 | 6 | Chat: text → AI chips; `$ cmd` → shell; tap chip → shell |
@@ -647,7 +647,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3322/sw.js
 | Operator príkazy `help` / `status` / `clear` / `export` | ✓ |
 | Shell `$` / `/` + tap-to-run + follow-up | ✓ |
 | Terminal, Files, System, Insolvency | ✓ |
-| PIN 2366, Tailscale lock (8.8.8.8 → 403) | ✓ |
+| PIN 0000, Tailscale lock (8.8.8.8 → 403) | ✓ |
 | PWA manifest + service worker | ✓ |
 | Export Markdown (`export` / Export menu) | ✓ share alebo clipboard |
 | Export PDF/JSON | ✗ stub |
