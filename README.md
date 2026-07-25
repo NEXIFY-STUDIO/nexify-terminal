@@ -402,11 +402,13 @@ Súbor: `/Users/erikbabcan/aaa-terminalnexify2-with-v-main/.env.local`
 | `ALLOWED_ORIGIN` | CORS pre hack-api (localhost + Tailscale IP) |
 | `NEXT_PUBLIC_DEV_CONNECT_SRC` | CSP connect-src pre Tailscale |
 
-CI používa fake fixture `.env.ci` — len pre GitHub Actions, nie pre produkciu.
+`.env.ci` je fake fixture pre lokálny smoke — nie pre produkciu.
 
 ---
 
-## 11. Testy a CI
+## 11. Testy (lokálne)
+
+GitHub Actions CI je **vypnuté** — gate testy spúšťaj na Macu pred pushom.
 
 ### Kategórie (14 celkom)
 
@@ -451,8 +453,7 @@ pnpm run test:e2e              # full finalize pred deployom
 launchctl kickstart -k gui/$(id -u)/com.nexify.terminal
 ```
 
-GitHub Actions: `.github/workflows/ci.yml` — `lint` + `test:all` + `test:github-iphone` + `test:iphone17-static` na každý push do `main`.
-
+Žiadny `.github/workflows/ci.yml` — žiadne Actions joby na push/PR.
 ---
 
 ## 12. Riešenie problémov

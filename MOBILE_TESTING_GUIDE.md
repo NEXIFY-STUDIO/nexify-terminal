@@ -24,13 +24,13 @@ pnpm dev:all          # :3322 + hack-api :3021 + ai-proxy
 pnpm test:iphone17-live
 ```
 
-Alebo jeden príkaz (štart + healthcheck + live + teardown):
+Alebo jeden príkaz (štart + healthcheck + live + teardown) — **len lokálne**:
 
 ```bash
-pnpm test:iphone17-live:ci
+pnpm test:iphone17-live:stack
 ```
 
-GitHub Actions job **`iphone17-live`** (po `test`) spúšťa ten istý wrapper.
+GitHub Actions CI je vypnuté; testy bežia len na Macu.
 
 ---
 
@@ -54,9 +54,9 @@ GitHub Actions job **`iphone17-live`** (po `test`) spúšťa ten istý wrapper.
    pnpm test:iphone17-live
    ```
    Zahŕňa lockscreen + authenticated + screens + **operator #321–#328**.
-   CI: `pnpm test:iphone17-live:ci` alebo Actions job `iphone17-live`.
+   Plný stack wrapper: `pnpm test:iphone17-live:stack` (lokálne, bez GitHub Actions).
 
-4. **CI tip**  
+4. **Tip**  
    Spustiť live job až po `dev:all` healthchecke; bez `:3322` sa testy skip/failujú.  
    Odporúčaný order v pipeline: `integrity-60` → `iphone17-static` → `e2e` → (optional) `iphone17-live`.
 

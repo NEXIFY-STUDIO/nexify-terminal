@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CI / local wrapper: start stack → healthcheck → pnpm test:iphone17-live → teardown.
-# Usage: pnpm test:iphone17-live:ci
+# Usage: pnpm test:iphone17-live:stack  (local full-stack live; no GitHub Actions)
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

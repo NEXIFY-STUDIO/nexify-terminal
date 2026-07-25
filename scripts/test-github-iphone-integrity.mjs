@@ -58,9 +58,8 @@ test('02 — package.json defines test:github-iphone', () => {
   assert(pkg.scripts['test:github-iphone'], 'test:github-iphone missing');
 });
 
-test('03 — CI workflow runs test:all', () => {
-  const ci = read('.github/workflows/ci.yml');
-  assert(ci.includes('pnpm run test:all'), 'CI missing test:all');
+test('03 — no GitHub Actions CI workflow (local-only tests)', () => {
+  assert(!exists('.github/workflows/ci.yml'), 'ci.yml must be removed — tests run locally only');
 });
 
 test('04 — README documents iPhone URL :3322', () => {
@@ -215,7 +214,7 @@ test('27 — .env.example present (no secrets)', () => {
   assert(!example.includes('sk-'), 'example must not contain real keys');
 });
 
-test('28 — .env.ci for GitHub Actions', () => {
+test('28 — .env.ci fixture present (local smoke, not Actions)', () => {
   assert(exists('.env.ci'), 'missing .env.ci');
 });
 
