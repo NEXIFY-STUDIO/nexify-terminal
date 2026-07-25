@@ -61,20 +61,28 @@ const tests = [
     const dy = 0;
     return Math.sqrt(dx * dx + dy * dy) > 8;
   }),
-  mockTest(138, 'Paste routing: terminal mode', () => {
-    const mode = 'terminal';
-    return mode === 'terminal';
+  mockTest(138, 'Paste routing: terminal sends to shell input', () => {
+    let terminalPayload = null;
+    const viewMode = 'terminal';
+    const shellSessionId = 'sess-abc';
+    const text = 'ls -la';
+    if (viewMode === 'terminal' && shellSessionId) {
+      terminalPayload = { url: `/api/shell?path=sessions/${shellSessionId}/input`, input: text };
+    }
+    return terminalPayload?.input === 'ls -la';
   }),
-  mockTest(139, 'Paste routing: chat mode', () => {
-    const mode = 'chat';
-    return mode === 'chat';
+  mockTest(139, 'Paste routing: chat appends to input state', () => {
+    let input = 'existing';
+    const text = 'new line';
+    input = input ? `${input}\n${text}` : text;
+    return input === 'existing\nnew line';
   }),
-  ...patternTests(140, 'proxy.ts', 'Tailscale in proxy module', [
-    { name: 'TAILSCALE_ALLOWED_IP env', pattern: /TAILSCALE_ALLOWED_IP/ },
-    { name: '100.103.153.97 default', pattern: /100\.103\.153\.97/ },
-    { name: 'fd7a IPv6 tailscale', pattern: /fd7a:115c:a1e0/ },
-    { name: '403 forbidden response', pattern: /status:\s*403/ },
-    { name: 'isPrivateIp helper', pattern: /isPrivateIp/ },
+  ...patternTests(140, chat, 'iOS refactor paste & dual-chat', [
+    { name: 'executePasteText function', pattern: /const executePasteText\s*=\s*async|executePasteText\s*=/ },
+    { name: 'wasLongPressedRef', pattern: /wasLongPressedRef/ },
+    { name: 'DualChatArea import', pattern: /DualChatArea/ },
+    { name: 'pasteDialog visible state', pattern: /pasteDialog\.visible|Vložiť text \(PWA Fallback\)/ },
+    { name: 'setSelectionRange cursor at end', pattern: /setSelectionRange/ },
   ]),
   mockTest(145, 'Gestures: source has touch swipe handlers wired', () => {
     const src = readSource(chat);

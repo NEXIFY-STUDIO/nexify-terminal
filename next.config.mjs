@@ -1,5 +1,21 @@
 /** @type {import('next').NextConfig} */
+
+const defaultAllowedDevOrigins = [
+  '127.0.0.1',
+  '100.103.0.38',
+  'macbook-air-uvatea-erik.tail8c034f.ts.net',
+  '*.tail8c034f.ts.net',
+  '*.ts.net',
+];
+
+const extraAllowedDevOrigins = (process.env.NEXIFY_ALLOWED_DEV_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const nextConfig = {
+  // Allow Tailscale Serve / phone PWA to load /_next/* in dev (Next.js 16+)
+  allowedDevOrigins: [...defaultAllowedDevOrigins, ...extraAllowedDevOrigins],
   typescript: {
     ignoreBuildErrors: true,
   },

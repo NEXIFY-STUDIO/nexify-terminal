@@ -9,12 +9,14 @@ interface TerminalViewProps {
 export function TerminalView({ sessionId }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<any>(null)
+  const fitAddonRef = useRef<any>(null)
 
   useEffect(() => {
     let isDestroyed = false
     let eventSource: EventSource | null = null
     let handleResize: (() => void) | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let resizeObserver: ResizeObserver | null = null
 
     function connectStream(term: any) {
       if (isDestroyed) return
@@ -52,14 +54,12 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
     }
 
     async function initTerminal() {
-      // Dynamically import xterm to prevent SSR issues in Next.js
       const { Terminal } = await import("xterm")
       const { FitAddon } = await import("xterm-addon-fit")
       await import("xterm/css/xterm.css")
 
       if (isDestroyed || !containerRef.current) return
 
-      // Create terminal instance
       const term = new Terminal({
         cursorBlink: true,
         cursorStyle: "bar",
@@ -67,9 +67,9 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
         fontSize: 13,
         lineHeight: 1.2,
         theme: {
-          background: "#09090b", // Match Zyricon background
+          background: "#09090b",
           foreground: "#e4e4e7",
-          cursor: "#06b6d4", // Cyan cursor
+          cursor: "#06b6d4",
           cursorAccent: "#09090b",
           selectionBackground: "rgba(6, 182, 212, 0.3)",
           black: "#09090b",
@@ -86,15 +86,15 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       terminalRef.current = term
 
       const fitAddon = new FitAddon()
+      fitAddonRef.current = fitAddon
       term.loadAddon(fitAddon)
 
-      // Open terminal in element
       term.open(containerRef.current)
-      fitAddon.fit()
 
-      // Handle window resize event
       handleResize = () => {
-        if (!isDestroyed && term && fitAddon) {
+        if (!isDestroyed && term && fitAddon && containerRef.current) {
+          const { width, height } = containerRef.current.getBoundingClientRect()
+          if (width < 8 || height < 8) return
           try {
             fitAddon.fit()
             const { cols, rows } = term
@@ -110,13 +110,22 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       }
 
       window.addEventListener("resize", handleResize)
-      
-      // Perform initial resize delay to let DOM adjust
+
+      resizeObserver = new ResizeObserver(() => {
+        if (handleResize) handleResize()
+      })
+      resizeObserver.observe(containerRef.current)
+
+      // Double rAF + short delay: tab switch often mounts before layout settles (402×874).
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (handleResize) handleResize()
+        })
+      })
       setTimeout(() => {
         if (handleResize) handleResize()
-      }, 100)
+      }, 120)
 
-      // Listen for keystrokes in xterm and send them directly to PTY stdin
       term.onData((data) => {
         if (isDestroyed) return
         fetch(`/api/shell?path=sessions/${sessionId}/input`, {
@@ -126,7 +135,6 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
         }).catch((err) => console.error("Failed to write stdin:", err))
       })
 
-      // Establish EventSource connection to stream terminal stdout/stderr back into xterm
       connectStream(term)
     }
 
@@ -136,9 +144,14 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
       isDestroyed = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
       if (eventSource) eventSource.close()
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+        resizeObserver = null
+      }
       if (terminalRef.current) {
         terminalRef.current.dispose()
       }
+      fitAddonRef.current = null
       if (handleResize) {
         window.removeEventListener("resize", handleResize)
       }
@@ -147,7 +160,6 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
 
   return (
     <div className="w-full h-full bg-[#09090b] rounded-2xl border border-border/40 shadow-2xl flex flex-col overflow-hidden relative">
-      {/* Top Bar Decoration */}
       <div className="flex items-center justify-between border-b border-border/30 px-5 py-2.5 bg-black/40 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -162,10 +174,9 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
           <span className="text-[10px] font-medium text-cyan-400/80 tracking-wide uppercase">Interactive</span>
         </div>
       </div>
-      
-      {/* Actual Terminal Container */}
+
       <div className="flex-1 w-full h-full p-4 overflow-hidden relative">
-        <div ref={containerRef} className="w-full h-full min-h-[350px] overflow-hidden" />
+        <div ref={containerRef} className="w-full h-full min-h-[350px] overflow-hidden" data-testid="xterm-container" />
       </div>
     </div>
   )

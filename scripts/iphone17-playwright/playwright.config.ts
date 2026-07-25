@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       name: 'authenticated',
-      testMatch: /iphone17-authenticated\.spec\.ts/,
+      testMatch: /iphone17-(authenticated|screens|operator)\.spec\.ts/,
       dependencies: ['setup'],
       use: { storageState: authFile },
     },

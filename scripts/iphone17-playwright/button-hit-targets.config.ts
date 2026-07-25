@@ -35,7 +35,7 @@ export default defineConfig({
     },
     {
       name: 'desktop-authenticated',
-      testMatch: /button-hit-targets\.spec\.ts/,
+      testMatch: /button-(hit-targets|functions)\.spec\.ts/,
       dependencies: ['setup'],
       use: { storageState: authFile },
     },

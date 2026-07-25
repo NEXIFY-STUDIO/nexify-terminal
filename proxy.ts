@@ -23,6 +23,7 @@ const RATE_LIMIT_CONFIG = {
 const RATE_LIMIT_EXCLUDE_PATHS = [
   '/_next/',
   '/api/health',
+  '/api/restart',
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',

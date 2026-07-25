@@ -24,7 +24,7 @@ export function NexifyManualSheet({ onOpen, className }: NexifyManualSheetProps)
         <Button
           className={
             className ??
-            "btn-3d btn-glow gap-1 bg-gradient-to-br from-cyan-900/80 to-secondary/70 text-cyan-100 hover:from-cyan-800/80 hover:to-secondary/50 backdrop-blur-sm border border-cyan-500/30 shadow-lg text-[10px] px-2 py-1 h-7"
+            "active:scale-[0.98] gap-1 bg-gradient-to-br from-secondary/90 to-secondary/70 text-accent hover:from-secondary/70 hover:to-secondary/50 backdrop-blur-sm border border-accent/30 shadow-lg text-[10px] px-2 py-1 h-7"
           }
           onClick={() => onOpen?.()}
         >

@@ -11,7 +11,7 @@ console.log('🔑 Running passcode PIN verification tests...');
 
 let failed = false;
 
-// 1. Read .env.local to confirm PIN is configured to 2366
+// 1. Read .env.local to confirm a PIN is configured (never log/assert the real value)
 if (!fs.existsSync(envPath)) {
   console.error('❌ Missing .env.local file');
   process.exit(1);
@@ -21,14 +21,7 @@ const envContent = fs.readFileSync(envPath, 'utf8');
 const passcodeMatch = envContent.match(/NEXT_PUBLIC_PASSCODE\s*=\s*(\d+)/);
 
 if (passcodeMatch) {
-  const configuredPin = passcodeMatch[1];
-  console.log(`✅ Configured passcode in env: ${configuredPin}`);
-  if (configuredPin === '2366') {
-    console.log('   ✅ Match: Passcode is correctly set to 2366.');
-  } else {
-    console.error(`   ❌ Error: Expected passcode to be 2366, but found ${configuredPin}`);
-    failed = true;
-  }
+  console.log(`✅ Configured passcode in env: ${'*'.repeat(passcodeMatch[1].length)} (${passcodeMatch[1].length} digits)`);
 } else {
   console.error('❌ Error: NEXT_PUBLIC_PASSCODE is not defined in env');
   failed = true;
@@ -51,25 +44,22 @@ if (pinFallbackPattern.test(guardContent)) {
   failed = true;
 }
 
-// 3. Emulate client-side verification logic
+// 3. Emulate client-side verification logic with a synthetic test PIN
+// (never the real deployed secret — this only exercises the comparison logic)
 console.log('\n🧪 Emulating AuthGuard PIN verification sequence...');
-const simulateVerify = (inputPin) => {
-  // Client reads environment variables (which are loaded from .env.local)
-  const securePin = '2366'; // Emulating loaded env.NEXT_PUBLIC_PASSCODE
-  return inputPin === securePin;
-};
+const TEST_PIN = '4821';
+const simulateVerify = (inputPin) => inputPin === TEST_PIN;
 
 // Test correct PIN
-console.log('   Tapping keypad sequence: [2] -> [3] -> [6] -> [6]...');
-const testCorrect = simulateVerify('2366');
+const testCorrect = simulateVerify(TEST_PIN);
 if (testCorrect) {
-  console.log('   ✅ Success: Correct PIN "2366" granted access.');
+  console.log('   ✅ Success: Correct test PIN granted access.');
 } else {
-  console.error('   ❌ Failed: Correct PIN "2366" was rejected.');
+  console.error('   ❌ Failed: Correct test PIN was rejected.');
   failed = true;
 }
 
-// Test old PIN (should be rejected)
+// Test old default PIN (should be rejected)
 console.log('   Tapping keypad sequence: [1] -> [3] -> [3] -> [7] (old default)...');
 const testOld = simulateVerify('1337');
 if (!testOld) {

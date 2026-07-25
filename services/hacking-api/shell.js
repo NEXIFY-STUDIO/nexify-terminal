@@ -203,32 +203,30 @@ export function createShellSessionManager({
     //  2) usePty=true (no factory)  → script(1) wrapper (Linux/BSD argv differ).
     //  3) usePty=false              → /bin/sh -c (no PTY, line-oriented only).
     let child;
-    if (usePty && typeof ptyFactory === 'function') {
-      const ptyProc = ptyFactory('/bin/sh', ['-c', innerCommand], {
-        name: shellEnv.TERM || 'xterm-256color',
-        cols,
-        rows,
+    const spawnWithoutPty = () =>
+      spawnProcess('/bin/sh', ['-c', innerCommand], {
         cwd: resolvedCwd,
         env: shellEnv,
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
-      child = adaptPtyToChild(ptyProc);
-    } else {
-      const isBsdScript = scriptPlatform === 'darwin' || scriptPlatform === 'freebsd';
-      const spawnBin = usePty ? scriptCommand : '/bin/sh';
-      const spawnArgs = usePty
-        ? (isBsdScript
-          ? ['-q', '/dev/null', '/bin/sh', '-c', innerCommand]
-          : ['-q', '-c', innerCommand, '/dev/null'])
-        : ['-c', innerCommand];
-      child = spawnProcess(
-        spawnBin,
-        spawnArgs,
-        {
+
+    if (usePty && typeof ptyFactory === 'function') {
+      try {
+        const ptyProc = ptyFactory('/bin/sh', ['-c', innerCommand], {
+          name: shellEnv.TERM || 'xterm-256color',
+          cols,
+          rows,
           cwd: resolvedCwd,
           env: shellEnv,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        }
-      );
+        });
+        child = adaptPtyToChild(ptyProc);
+      } catch {
+        // Probe can pass while later spawns fail — always keep shell usable.
+        child = spawnWithoutPty();
+      }
+    } else {
+      // Pipe mode (deterministic fallback). Skip flaky script(1) on Darwin.
+      child = spawnWithoutPty();
     }
 
     const createdAt = now();

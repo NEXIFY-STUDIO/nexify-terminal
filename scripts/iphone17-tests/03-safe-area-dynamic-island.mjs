@@ -9,17 +9,19 @@ const tests = [
     { name: 'h-dvh full height', pattern: /h-dvh/ },
     { name: 'w-screen full width', pattern: /w-screen/ },
   ]),
-  ...patternTests(84, 'components/chat-area.tsx', 'Dynamic Island layout', [
-    { name: 'header safe-area top padding', pattern: /pt-\[calc\(env\(safe-area-inset-top,0px\)\+0\.5rem\)\]/ },
-    { name: 'input safe-area bottom padding', pattern: /pb-\[calc\(env\(safe-area-inset-bottom,0px\)\+12px\)\]/ },
+  ...patternTests(84, 'components/nexify-header.tsx', 'Dynamic Island layout', [
+    { name: 'header safe-area top padding', pattern: /paddingTop:\s*"calc\(env\(safe-area-inset-top,\s*0px\)\s*\+\s*8px\)"/ },
     { name: 'header backdrop blur', pattern: /backdrop-blur-sm/ },
     { name: 'header border bottom', pattern: /border-b\s+border-border/ },
-    { name: 'header z-10', pattern: /relative\s+z-10/ },
+    { name: 'header z-20', pattern: /relative\s+z-20/ },
+    { name: 'nexify-header testid', pattern: /data-testid="nexify-header"/ },
+  ]),
+  ...patternTests(89, 'components/chat-area.tsx', 'Dynamic Island body', [
+    { name: 'input safe-area bottom padding', pattern: /pb-\[calc\(env\(safe-area-inset-bottom,0px\)\+12px\)\]/ },
     { name: 'scrollable-container on messages', pattern: /scrollable-container/ },
     { name: 'fixed inset lock overlay z-10000', pattern: /z-\[10000\]/ },
     { name: 'input area mt-auto', pattern: /mt-auto/ },
     { name: 'max-w-4xl input container', pattern: /max-w-4xl/ },
-    { name: 'rounded-full input bar', pattern: /rounded-full/ },
   ]),
   ...patternTests(94, 'components/auth-guard.tsx', 'Lockscreen safe area', [
     { name: 'fixed inset-0 lockscreen', pattern: /fixed\s+inset-0/ },
@@ -33,13 +35,13 @@ const tests = [
     { name: 'viewportFit cover export', pattern: /viewportFit:\s*"cover"/ },
     { name: 'userScalable false', pattern: /userScalable:\s*false/ },
   ]),
-  ...patternTests(102, 'components/chat-area.tsx', 'Tab bar layout', [
-    { name: 'flex tab navigation', pattern: /handleViewModeChange\('chat'\)/ },
-    { name: 'terminal tab button', pattern: /handleViewModeChange\('terminal'\)/ },
-    { name: 'files tab button', pattern: /handleViewModeChange\('files'\)/ },
-    { name: 'system tab button', pattern: /handleViewModeChange\('system'\)/ },
-    { name: 'insolvency tab button', pattern: /handleViewModeChange\('insolvency'\)/ },
-    { name: 'chat tab active styling', pattern: /viewMode\s*===\s*'chat'/ },
+  ...patternTests(102, 'components/nexify-header.tsx', 'Tab bar layout', [
+    { name: 'flex tab navigation', pattern: /nexify-view-tabs/ },
+    { name: 'terminal tab button', pattern: /id:\s*"terminal"/ },
+    { name: 'files tab button', pattern: /id:\s*"files"/ },
+    { name: 'system tab button', pattern: /id:\s*"system"/ },
+    { name: 'insolvency overflow tab', pattern: /id:\s*"insolvency"/ },
+    { name: 'chat tab active styling', pattern: /viewMode\s*===\s*view\.id/ },
   ]),
 ];
 

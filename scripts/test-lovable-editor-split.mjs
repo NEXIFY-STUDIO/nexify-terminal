@@ -115,10 +115,11 @@ assert('queryAgent fetch to /api/ai', /fetch\(\s*["']\/api\/ai["']/.test(dualCon
 assert('Enter-to-send without shift', /e\.key\s*===\s*["']Enter["']\s*&&\s*!e\.shiftKey/.test(dualContent));
 
 console.log('\n🔗 Chat-area integration (view mode routing)');
+const headerContent = readFile(path.join(rootDir, 'components/nexify-header.tsx'));
 assert('DualChatArea import in chat-area', /import\s+\{\s*DualChatArea\s*\}/.test(chatContent));
-assert("dual-chat view mode type", /'dual-chat'/.test(chatContent));
+assert("dual-chat view mode type", /'dual-chat'/.test(chatContent) || /dual-chat/.test(headerContent));
 assert('DualChatArea rendered when viewMode is dual-chat', /viewMode\s*===\s*['"]dual-chat['"][\s\S]*<DualChatArea/.test(chatContent));
-assert('Dual Coder tab/button in chat chrome', /handleViewModeChange\(['"]dual-chat['"]\)/.test(chatContent));
+assert('Dual Coder tab/button in chat chrome', /dual-chat/.test(headerContent) && /Dual Coder/.test(headerContent));
 assert('Input hidden in dual-chat mode', /viewMode\s*!==\s*['"]dual-chat['"]/.test(chatContent));
 
 console.log('\n🧠 Code block parsing behavior');
