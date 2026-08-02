@@ -1466,7 +1466,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
 
   return (
     <main 
-      className="flex-1 flex flex-col relative overflow-hidden"
+      className="flex-1 flex flex-col relative overflow-hidden min-h-0 h-full"
       onMouseMove={resetIdleTimer}
       onKeyDown={resetIdleTimer}
       onClick={resetIdleTimer}
@@ -1759,10 +1759,18 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
         </div>
       )}
 
-      {/* Main Content - flex layout with input at absolute bottom */}
-      <div className="relative z-10 flex-1 flex flex-col items-center px-6 pt-4 pb-4 overflow-hidden w-full">
+      {/* Main Content - terminal/dual-chat fill remaining viewport (~100dvh minus thin header) */}
+      <div
+        className={`relative z-10 flex-1 flex flex-col items-center overflow-hidden w-full min-h-0 ${
+          viewMode === 'terminal' || viewMode === 'dual-chat'
+            ? 'px-0 pt-0 pb-0'
+            : 'px-6 pt-4 pb-4'
+        }`}
+      >
         {viewMode === 'dual-chat' ? (
-          <DualChatArea />
+          <div className="flex-1 w-full max-w-none h-full min-h-0">
+            <DualChatArea />
+          </div>
         ) : viewMode === 'system' ? (
           <div className="flex-1 w-full max-w-7xl h-full pb-4">
             <SystemMonitor />
@@ -1777,7 +1785,7 @@ export function ChatArea({ sidebarOpen, toggleSidebar }: { sidebarOpen: boolean;
           </div>
         ) : viewMode === 'terminal' ? (
           shellSessionId ? (
-            <div className="flex-1 w-full max-w-5xl h-full pb-4">
+            <div className="flex-1 w-full max-w-none h-full min-h-0">
               <TerminalView sessionId={shellSessionId} />
             </div>
           ) : (

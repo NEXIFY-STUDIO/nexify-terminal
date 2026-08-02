@@ -169,9 +169,9 @@ export function DualChatArea() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] w-full">
-      {/* Side-by-side Dual Panels */}
-      <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0 overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 w-full max-w-none">
+      {/* Side-by-side Dual Panels — fill remaining viewport under header */}
+      <div className="flex-1 flex flex-col md:flex-row gap-2 p-1 sm:p-2 min-h-0 overflow-hidden">
         
         {/* Vibe Agent Panel */}
         <div className="flex-1 flex flex-col min-w-0 bg-background/40 backdrop-blur-md rounded-xl border border-purple-500/20 shadow-lg shadow-purple-500/5 overflow-hidden">
@@ -240,8 +240,8 @@ export function DualChatArea() {
       </div>
 
       {/* Shared Input Area */}
-      <div className="p-4 bg-background/20 border-t border-border/30 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
+      <div className="p-2 sm:p-3 bg-background/20 border-t border-border/30 backdrop-blur-md shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]">
+        <div className="w-full max-w-none mx-auto flex items-center gap-3">
           {/* Target selector */}
           <select
             value={target}

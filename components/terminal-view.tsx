@@ -159,13 +159,13 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
   }, [sessionId])
 
   return (
-    <div className="w-full h-full bg-[#09090b] rounded-2xl border border-border/40 shadow-2xl flex flex-col overflow-hidden relative">
-      <div className="flex items-center justify-between border-b border-border/30 px-5 py-2.5 bg-black/40 shrink-0">
+    <div className="w-full h-full min-h-0 bg-[#09090b] border-0 rounded-none shadow-none flex flex-col overflow-hidden relative">
+      <div className="flex items-center justify-between border-b border-border/30 px-3 py-1.5 bg-black/40 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-          <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-          <span className="ml-2 text-xs font-semibold text-muted-foreground font-[var(--font-heading)] tracking-wider uppercase">
+          <div className="w-2 h-2 rounded-full bg-red-500/80" />
+          <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
+          <div className="w-2 h-2 rounded-full bg-green-500/80" />
+          <span className="ml-2 text-[10px] font-semibold text-muted-foreground font-[var(--font-heading)] tracking-wider uppercase">
             Nexify Interactive Shell
           </span>
         </div>
@@ -175,8 +175,8 @@ export function TerminalView({ sessionId }: TerminalViewProps) {
         </div>
       </div>
 
-      <div className="flex-1 w-full h-full p-4 overflow-hidden relative">
-        <div ref={containerRef} className="w-full h-full min-h-[350px] overflow-hidden" data-testid="xterm-container" />
+      <div className="flex-1 w-full min-h-0 p-1 sm:p-2 overflow-hidden relative">
+        <div ref={containerRef} className="w-full h-full min-h-0 overflow-hidden" data-testid="xterm-container" />
       </div>
     </div>
   )
