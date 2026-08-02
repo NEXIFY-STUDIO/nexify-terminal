@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   ALL_TABS,
   assertInViewport,
+  assertMinHitTarget,
   assertNoDocumentScroll,
   gotoTab,
   openLongPressContextMenu,
@@ -92,9 +93,7 @@ for (const [i, tab] of ALL_TABS.entries()) {
 test('#317 primary view tabs meet HIG min 44px hit targets', async ({ page }) => {
   for (const id of ['view-tab-chat', 'view-tab-terminal', 'view-tab-files', 'view-tab-system', 'view-tab-more']) {
     const box = await page.getByTestId(id).boundingBox();
-    expect(box).toBeTruthy();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
-    expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(40);
+    assertMinHitTarget(box, 44);
   }
 });
 

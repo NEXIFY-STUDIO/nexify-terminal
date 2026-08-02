@@ -75,6 +75,16 @@ export function assertInViewport(
   expect(box!.y + box!.height).toBeLessThanOrEqual(vh + pad);
 }
 
+/** iOS HIG minimum touch target (44×44 pt). */
+export function assertMinHitTarget(
+  box: { width: number; height: number } | null,
+  min = 44
+) {
+  expect(box).toBeTruthy();
+  expect(box!.height).toBeGreaterThanOrEqual(min);
+  expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(Math.min(min, 40));
+}
+
 /** Resolve a non-interactive long-press target (not button/input). */
 async function longPressPoint(page: Page): Promise<{ x: number; y: number }> {
   const point = await page.evaluate(() => {
